@@ -1,7 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm ci && npm --prefix functions ci",
-  "buildCommand": "npm --prefix functions run build",
+  "buildCommand": "npm --prefix functions run build && node -e \"require('fs').mkdirSync('public',{recursive:true})\"",
+  "outputDirectory": "public",
   "functions": {
     "api/mongo.mjs": {
       "includeFiles": "{netlify/functions/**,functions/lib/**}",
