@@ -1,0 +1,3 @@
+import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+describe('MongoDB Netlify boundary', () => { const source = readFileSync('netlify/functions/mongo-api.mjs', 'utf8'); const mongo = readFileSync('netlify/functions/_lib/mongo.mjs', 'utf8'); it('requires bearer identity and server-only configuration', () => { expect(source).toContain('verifyIdToken'); expect(mongo).toContain('MONGODB_URI'); expect(mongo).not.toContain('PUBLIC_') }); it('checks management authorization before writes', () => { expect(source).toContain('Admin or instructor access required.'); expect(source).toContain('Course instructor access required.') }) })

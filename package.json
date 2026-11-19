@@ -18,6 +18,8 @@
         "test:coverage:ui": "vitest --ui --config=vitest.coverage.config.ts",
         "validate:firebase": "node scripts/validate-firebase-config.mjs",
         "validate:all": "npm run check && npm run validate:firebase",
+        "test:integration:quiz": "node scripts/mongodb-quiz-integration.mjs",
+        "test:smoke:preview": "node scripts/netlify-preview-smoke.mjs",
         "lint": "eslint ."
     },
     "devDependencies": {
@@ -72,6 +74,7 @@
         "marked": "^17.0.0",
         "mathjs": "^15.1.0",
         "mode-watcher": "^1.1.0",
+        "mongodb": "^6.22.0",
         "svelte-dnd-action": "^0.9.67",
         "tailwind-merge": "^3.4.0",
         "yaml": "^2.8.1",

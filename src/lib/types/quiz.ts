@@ -73,6 +73,15 @@ export interface QuizQuestion {
 	minLength?: number // Min characters for essay
 }
 
+/** A quiz payload that is safe to send to a learner. */
+export type LearnerQuizQuestion = Omit<QuizQuestion, 'correctAnswer' | 'acceptableAnswers' | 'explanation' | 'options'> & {
+	options?: Array<Omit<QuestionOption, 'isCorrect' | 'explanation'>>
+}
+
+export type LearnerQuiz = Omit<Quiz, 'questions'> & {
+	questions: LearnerQuizQuestion[]
+}
+
 export interface QuestionOption {
 	id: string
 	text: string

@@ -16,6 +16,7 @@ import { db } from "$lib/firebase";
 import type { UserProgress, Course, Lesson } from "$lib/types";
 import { COLLECTIONS } from "$lib/firebase/collections";
 import { convertTimestamps } from "$lib/utils/firestore";
+import { mongoProvider } from './mongo-provider';
 
 export class ProgressService {
   /**
@@ -57,6 +58,7 @@ export class ProgressService {
     userId: string,
     courseId: string,
   ): Promise<UserProgress | null> {
+    if (mongoProvider.enabled()) return mongoProvider.getProgress(courseId)
     try {
       const q = query(
         collection(db, COLLECTIONS.COURSE_PROGRESS),
@@ -87,6 +89,7 @@ export class ProgressService {
     courseId: string,
     lessonId: string,
   ): Promise<void> {
+    if (mongoProvider.enabled()) { const progress = await this.getCourseProgress(userId, courseId); await mongoProvider.saveProgress(courseId, { ...(progress ?? {}), currentLesson: lessonId, startedAt: progress?.startedAt ?? new Date().toISOString(), lastAccessedAt: new Date().toISOString() }); return }
     try {
       const progress = await this.ensureProgressRecord(userId, courseId);
 
@@ -118,6 +121,7 @@ export class ProgressService {
     timeSpent: number = 0,
     quizScore?: number,
   ): Promise<void> {
+    if (mongoProvider.enabled()) { const progress = await this.getCourseProgress(userId, courseId); if (!progress) throw new Error('User not enrolled in course'); const course = await (await import('./courses')).CourseService.getCourse(courseId); if (!course) throw new Error('Course not found'); const completed = progress.completedLessons.includes(lessonId) ? progress.completedLessons : [...progress.completedLessons, lessonId]; const total = course.totalLessons ?? course.lessonsMetadata?.length ?? course.lessons?.length ?? 0; const scores = { ...(progress.quizScores ?? {}), ...(quizScore === undefined ? {} : { [lessonId]: quizScore }) }; await mongoProvider.saveProgress(courseId, { ...progress, completedLessons: completed, progressPercentage: total ? Math.round(completed.length / total * 1000) / 10 : 0, totalTimeSpent: (progress.totalTimeSpent ?? 0) + timeSpent, sessionCount: (progress.sessionCount ?? 0) + 1, quizScores: scores, lastAccessedAt: new Date().toISOString() }); return }
     try {
       const progress = await this.ensureProgressRecord(userId, courseId);
 

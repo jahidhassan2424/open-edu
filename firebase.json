@@ -2,7 +2,7 @@
   "firestore": {
     "database": "(default)",
     "location": "nam5",
-    "rules": "firestore.rules",
+    "rules": "firestore.production.rules",
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
@@ -32,7 +32,7 @@
   },
   "functions": {
     "source": "functions",
-    "runtime": "nodejs18"
+    "runtime": "nodejs20"
   },
   "emulators": {
     "auth": {

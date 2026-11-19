@@ -2,272 +2,95 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    // Use custom claims - check token for role
-    function isAdmin() {
-      return request.auth != null && 'role' in request.auth.token && request.auth.token.role == 'admin';
-    }
-    
-    function isInstructor() {
-      return request.auth != null && 'role' in request.auth.token && (request.auth.token.role == 'instructor' || request.auth.token.role == 'admin');
-    }
-    
-    function isStudent() {
-      return request.auth != null && 'role' in request.auth.token && request.auth.token.role == 'student';
-    }
+    function signedIn() { return request.auth != null; }
+    function admin() { return signedIn() && request.auth.token.role == 'admin'; }
+    function instructor() { return signedIn() && (request.auth.token.role == 'admin' || request.auth.token.role == 'instructor'); }
+    function owns(userId) { return signedIn() && request.auth.uid == userId; }
+    function teaches(courseId) { return instructor() && get(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid; }
+    // getAfter supports a course import batch that creates a course and its content together.
+    function teachesAfter(courseId) { return instructor() && getAfter(/databases/$(database)/documents/courses/$(courseId)).data.instructorId == request.auth.uid; }
+    function enrolled(courseId) { return signedIn() && exists(/databases/$(database)/documents/enrollments/$(request.auth.uid + '_' + courseId)); }
 
-    // Users collection - users can read/write their own data
+    // Profile documents are not authority. Custom claims are assigned only by Admin SDK.
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isOwner(userId);
-      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
-      allow delete: if isAdmin();
+      allow get: if owns(userId) || admin();
+      allow create: if owns(userId) && !('role' in request.resource.data);
+      allow update: if (owns(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) || admin();
+      allow delete: if admin();
     }
 
-    // Courses collection
     match /courses/{courseId} {
-      // Anyone can read published courses, authenticated users can read all
-      allow read: if resource.data.isPublished == true || isAuthenticated();
-      
-      // Only instructors and admins can create courses
-      allow create: if isInstructor() && 
-        request.auth.uid == request.resource.data.instructorId;
-      
-      // Only course instructor or admin can update
-      allow update: if isAuthenticated() && 
-        (request.auth.uid == resource.data.instructorId || isAdmin());
-      
-      // Only admin can delete courses
-      allow delete: if isAdmin();
-    }
-
-    // Course enrollments collection
-    match /enrollments/{enrollmentId} {
-      // Admins can read/update all enrollments (separate rule to avoid get() calls)
-      allow read, update: if isAdmin();
-      
-      // Users can read their own enrollments
-      allow read: if isAuthenticated() && isOwner(resource.data.userId);
-      
-      // Instructors can read enrollments for their courses
-      allow read: if isAuthenticated() && 
-        request.auth.uid == get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId;
-      
-      // Any authenticated user can enroll themselves in courses
-      allow create: if isAuthenticated() && 
-        isOwner(request.resource.data.userId) &&
-        exists(/databases/$(database)/documents/courses/$(request.resource.data.courseId));
-      
-      // Users can update their own enrollment status
-      allow update: if isAuthenticated() && isOwner(resource.data.userId);
-      
-      // Instructors can update enrollments for their courses
-      allow update: if isAuthenticated() && 
-        request.auth.uid == get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId;
-      
-      // Only admin can delete enrollments
-      allow delete: if isAdmin();
-    }
-
-    // Progress tracking collection (courseProgress)
-    match /courseProgress/{progressId} {
-      // Admins can do anything (separate rule to avoid get() calls)
-      allow read, delete: if isAdmin();
-      
-      // Users can read/create/update their own progress
-      allow read, create, update: if isAuthenticated() && isOwner(resource.data.userId);
-      
-      // Instructors can read progress for their courses
-      allow read: if isAuthenticated() && 
-        request.auth.uid == get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId;
-      
-      // For create, check request.resource instead of resource
-      allow create, update: if isAuthenticated() && 
-        isOwner(request.resource.data.userId);
-    }
-
-    // Lessons collection (v1.6.0 - separate collection for scalability)
-    match /lessons/{lessonId} {
-      // Admins can do anything (separate rule to avoid get() calls)
-      allow read, update, delete: if isAdmin();
-      
-      // Anyone can read lessons if parent course is published
-      allow read: if get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.isPublished == true;
-      
-      // Authenticated users can read any lesson (for enrolled students)
-      allow read: if isAuthenticated();
-      
-      // Instructors can create lessons for their courses
-      // Note: During batch import, the course may not exist yet, so we check if:
-      // 1. The course exists and user is the instructor, OR
-      // 2. User is an instructor (for batch course+lesson creation)
-      allow create: if isInstructor() && (
-        // Course exists and user is instructor
-        (exists(/databases/$(database)/documents/courses/$(request.resource.data.courseId)) &&
-         request.auth.uid == get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.instructorId)
-        ||
-        // Course doesn't exist yet (batch import) - allow instructors to create
-        !exists(/databases/$(database)/documents/courses/$(request.resource.data.courseId))
+      // Authentication is required because legacy course documents can contain embedded quizzes.
+      allow read: if signedIn();
+      allow create: if instructor() && request.resource.data.instructorId == request.auth.uid;
+      allow update: if admin() || teaches(courseId) || (
+        enrolled(courseId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enrolled', 'updatedAt'])
+        && (request.resource.data.enrolled == resource.data.enrolled + 1 || request.resource.data.enrolled == resource.data.enrolled - 1)
       );
-      
-      // Only course instructor can update lessons
-      allow update: if isAuthenticated() && 
-        request.auth.uid == get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId;
+      allow delete: if admin();
     }
 
-    // Quizzes collection
+    match /lessons/{lessonId} {
+      allow read: if enrolled(resource.data.courseId) || teaches(resource.data.courseId) || admin();
+      allow create: if instructor() && teachesAfter(request.resource.data.courseId);
+      allow update, delete: if teaches(resource.data.courseId) || admin();
+    }
+
+    // Quiz documents contain answer keys and are never readable by learners.
     match /quizzes/{quizId} {
-      // Admins can do anything (separate rule to avoid get() calls)
-      allow read, update, delete: if isAdmin();
-      
-      // Students can read published quizzes
-      allow read: if isAuthenticated() && resource.data.isPublished == true;
-      
-      // Instructors can read all quizzes for their courses
-      allow read: if isAuthenticated() && 
-        request.auth.uid == get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId;
-      
-      // Only instructors and admins can create quizzes
-      allow create: if isInstructor() && 
-        request.auth.uid == request.resource.data.createdBy;
-      
-      // Quiz creator can update
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.createdBy;
-      
-      // Course instructor can update quizzes
-      allow update: if isAuthenticated() && 
-        request.auth.uid == get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId;
+      allow read: if admin() || teaches(resource.data.courseId);
+      allow create: if instructor() && request.resource.data.createdBy == request.auth.uid && teachesAfter(request.resource.data.courseId);
+      allow update, delete: if admin() || teaches(resource.data.courseId);
     }
 
-    // Quiz attempts collection
+    // Callable Functions are the sole author/grader. Learners can only read their own result.
     match /quiz-attempts/{attemptId} {
-      // Admins can do anything (separate rule to avoid get() calls)
-      allow read, delete: if isAdmin();
-      
-      // Users can read/create their own attempts
-      allow read, create: if isAuthenticated() && isOwner(resource.data.userId);
-      
-      // Users can update their own attempts ONLY while in-progress
-      allow update: if isAuthenticated() && 
-        isOwner(resource.data.userId) && 
-        resource.data.status == 'in-progress';
-      
-      // Instructors can read attempts for their courses
-      allow read: if isAuthenticated() && 
-        request.auth.uid == get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId;
-      
-      // For create, check request.resource instead
-      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow read: if owns(resource.data.userId) || admin() || teaches(resource.data.courseId);
+      allow create, update, delete: if false;
     }
 
-    // Notes collection
-    match /notes/{noteId} {
-      // Admins can do anything (separate rule to avoid get() calls)
-      allow read, delete: if isAdmin();
-      
-      // Users can read/create/update/delete their own notes
-      allow read, create, update, delete: if isAuthenticated() && isOwner(resource.data.userId);
-      
-      // Instructors can read notes for their courses
-      allow read: if isAuthenticated() && 
-        request.auth.uid == get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId;
-      
-      // For create, check request.resource
-      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+    match /enrollments/{enrollmentId} {
+      allow read: if owns(resource.data.userId) || admin() || teaches(resource.data.courseId);
+      allow create: if owns(request.resource.data.userId)
+        && enrollmentId == request.auth.uid + '_' + request.resource.data.courseId
+        && exists(/databases/$(database)/documents/courses/$(request.resource.data.courseId));
+      allow update: if admin() || teaches(resource.data.courseId);
+      allow delete: if admin();
     }
 
-    // Bookmarks collection
-    match /bookmarks/{bookmarkId} {
-      // Admins can do anything (separate rule to avoid get() calls)
-      allow read, delete: if isAdmin();
-      
-      // Users can read/create/update/delete their own bookmarks
-      allow read, create, update, delete: if isAuthenticated() && isOwner(resource.data.userId);
-      
-      // Instructors can read bookmarks for their courses
-      allow read: if isAuthenticated() && 
-        request.auth.uid == get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId;
-      
-      // For create, check request.resource
-      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+    match /courseProgress/{progressId} {
+      allow read: if owns(resource.data.userId) || admin() || teaches(resource.data.courseId);
+      allow create, update: if owns(request.resource.data.userId);
+      allow delete: if admin();
     }
 
-    // Highlights collection
-    match /highlights/{highlightId} {
-      // Admins can do anything (separate rule to avoid get() calls)
-      allow read, delete: if isAdmin();
-      
-      // Users can read/create/update/delete their own highlights
-      allow read, create, update, delete: if isAuthenticated() && isOwner(resource.data.userId);
-      
-      // Instructors can read highlights for their courses
-      allow read: if isAuthenticated() && 
-        request.auth.uid == get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorId;
-      
-      // For create, check request.resource
-      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+    match /notes/{noteId} { allow read, create, update, delete: if owns(resource.data.userId); }
+    match /bookmarks/{bookmarkId} { allow read, create, update, delete: if owns(resource.data.userId); }
+    match /highlights/{highlightId} { allow read, create, update, delete: if owns(resource.data.userId); }
+    match /readingPositions/{positionId} { allow read, create, update, delete: if owns(resource.data.userId); }
+    match /achievements/{achievementId} { allow read: if owns(resource.data.userId) || admin(); allow write: if admin(); }
+    match /analytics/{document=**} { allow read, write: if admin(); }
+    match /notifications/{notificationId} { allow read: if owns(resource.data.userId) || admin(); allow create, delete: if admin(); allow update: if owns(resource.data.userId) || admin(); }
+    match /{document=**} { allow read, write: if false; }
+  }
+
+    match /assignments/{assignmentId} {
+      allow read: if signedIn() && (enrolled(resource.data.courseId) || teaches(resource.data.courseId) || admin());
+      allow create: if instructor() && request.resource.data.createdBy == request.auth.uid && teachesAfter(request.resource.data.courseId);
+      allow update, delete: if admin() || teaches(resource.data.courseId);
     }
 
-    // Reading positions collection
-    match /readingPositions/{positionId} {
-      // Admins can do anything (separate rule to avoid get() calls)
-      allow read, delete: if isAdmin();
-      
-      // Users can read/create/update/delete their own reading positions
-      allow read: if isAuthenticated() && isOwner(resource.data.userId);
-      allow create, update: if isAuthenticated() && isOwner(request.resource.data.userId);
-      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    match /assignmentSubmissions/{submissionId} {
+      allow read: if owns(resource.data.userId) || admin() || teaches(resource.data.courseId);
+      allow create, update, delete: if false;
     }
+    match /gradeConfigs/{courseId} { allow read: if signedIn() && (enrolled(courseId) || teaches(courseId) || admin()); allow write: if admin() || teaches(courseId); }
+    match /finalResults/{resultId} { allow read: if owns(resource.data.userId) || admin() || teaches(resource.data.courseId); allow write: if false; }
 
-    // User achievements collection
-    match /achievements/{achievementId} {
-      // Users can read their own achievements, admins can read all
-      allow read: if isAuthenticated() && 
-        (isOwner(resource.data.userId) || isAdmin());
-      
-      // Only admin/system can create achievements
-      allow create: if isAdmin();
-      
-      // No updates to achievements (immutable)
-      allow update: if false;
-      
-      // Only admin can delete achievements
-      allow delete: if isAdmin();
-    }
-
-    // Analytics collection (admin only)
-    match /analytics/{document=**} {
-      allow read, write: if isAdmin();
-    }
-
-    // System notifications
-    match /notifications/{notificationId} {
-      // Users can read their own notifications
-      allow read: if isAuthenticated() && 
-        (isOwner(resource.data.userId) || isAdmin());
-      
-      // Admin can create notifications
-      allow create: if isAdmin();
-      
-      // Users can mark as read, admin can do anything
-      allow update: if isAuthenticated() && 
-        (isOwner(resource.data.userId) || isAdmin());
-      
-      // Only admin can delete
-      allow delete: if isAdmin();
-    }
-
-    // Catch-all: deny everything else
-    match /{document=**} {
-      allow read, write: if false;
-    }
+  match /academicTerms/{termId} {
+    allow read: if signedIn();
+    allow create, update: if admin() || (signedIn() && request.auth.token.role == 'instructor');
+    allow delete: if admin();
   }
 }

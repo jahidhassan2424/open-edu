@@ -53,6 +53,10 @@ const quizQuestionImportSchema = z.discriminatedUnion('type', [
 	}),
 	// Fill in the blank
 	z.object({
+		id: z.string(), type: z.literal('short-answer'), question: z.string().min(1), correctAnswer: z.string().optional(), explanation: z.string().default(''), points: z.number().min(0)
+	}),
+	// Fill in the blank
+	z.object({
 		id: z.string(),
 		type: z.literal('fill-blank'),
 		question: z.string().min(1, 'Question is required'),
@@ -125,18 +129,19 @@ const lessonImportSchema = z
 		}
 	)
 	.refine(
-		(data) => {
-			// If type is 'quiz', must have questions
-			if (data.type === 'quiz' && (!data.questions || data.questions.length === 0)) {
-				return false
-			}
-			return true
-		},
-		{
-			message: 'Quiz lessons must have at least one question',
-			path: ['questions']
-		}
+		(data) => data.type !== 'quiz' || !!data.questions?.length,
+		{ message: 'Quiz lessons must have at least one question', path: ['questions'] }
 	)
+
+const termSchema = z.object({
+	name: z.string().min(1).max(200),
+	startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+	endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+	status: z.enum(['planned', 'active', 'completed', 'archived']).default('planned')
+})
+const resourceSchema = z.object({ id: z.string().min(1), title: z.string().min(1), type: z.enum(['lesson', 'quiz', 'assignment', 'link', 'file']), url: z.string().url().optional(), lessonId: z.string().optional(), assignmentId: z.string().optional(), order: z.number().int().nonnegative() })
+const moduleSchema = z.object({ id: z.string().min(1), number: z.number().int().positive(), title: z.string().min(1), startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), objectives: z.array(z.string()), resources: z.array(resourceSchema) })
+const activitySchema = z.object({ id: z.string().min(1), type: z.enum(['quiz', 'assignment', 'exam', 'lecture', 'deadline']), title: z.string().min(1), date: z.string().min(1), dueAt: z.string().optional(), lessonId: z.string().optional(), quizId: z.string().optional(), moduleId: z.string().optional(), description: z.string().optional() })
 
 // Main course import schema - user-friendly format
 export const courseImportSchema = z
@@ -166,6 +171,7 @@ export const courseImportSchema = z
 
 		// Lessons (nested)
 		lessons: z.array(lessonImportSchema).min(1, 'Course must have at least one lesson')
+		,term: termSchema.optional(), modules: z.array(moduleSchema).optional(), schedule: z.array(activitySchema).optional(), assignments: z.array(z.object({ id: z.string(), title: z.string().min(1), instructions: z.string(), points: z.number().positive(), dueAt: z.string(), rubric: z.array(z.object({ id: z.string(), label: z.string(), description: z.string(), points: z.number().nonnegative() })).default([]), moduleId: z.string().optional(), isPublished: z.boolean().default(false) })).optional(), gradingCategories: z.array(z.object({ category: z.string(), weight: z.number().min(0).max(100) })).optional(), sourceMetadata: z.record(z.string(), z.unknown()).optional()
 	})
 	.refine(
 		(data) => {

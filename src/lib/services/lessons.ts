@@ -22,6 +22,7 @@ import { convertTimestamps } from "$lib/utils/firestore"
 import { lessonDocumentSchema } from "$lib/firebase/schemas"
 import type { Lesson, LessonMetadata } from "$lib/types/lesson"
 import { buildLessonMetadata } from "$lib/types/lesson"
+import { mongoProvider } from './mongo-provider'
 
 /**
  * Lesson Service - v1.6.0 Architecture
@@ -63,6 +64,7 @@ export class LessonService {
    * Get all lessons for a course, ordered by lesson order
    */
   static async getLessonsByCourse(courseId: string): Promise<Lesson[]> {
+    if (mongoProvider.enabled()) return mongoProvider.getLessons(courseId)
     try {
       const q = query(
         collection(db, COLLECTIONS.LESSONS),

@@ -413,6 +413,19 @@
 			</div>
 
 			<!-- Sidebar -->
+			{#if course.modules?.length || course.schedule?.length}
+				<Card class="mb-6 lg:col-span-2">
+					<CardHeader><CardTitle>Weekly schedule</CardTitle><CardDescription>Modules and upcoming academic activities</CardDescription></CardHeader>
+					<CardContent class="space-y-4">
+						{#each (course.modules ?? []).slice().sort((a,b) => a.number-b.number) as module}
+							<div class="rounded border p-3"><h3 class="font-medium">Week {module.number}: {module.title}</h3><p class="text-sm text-muted-foreground">{module.startDate} – {module.endDate}</p>{#if module.objectives.length}<ul class="list-disc pl-5 text-sm">{#each module.objectives as objective}<li>{objective}</li>{/each}</ul>{/if}<p class="text-sm">{module.resources.length} resource(s)</p></div>
+						{/each}
+						{#each (course.schedule ?? []).slice().sort((a,b) => a.date.localeCompare(b.date)) as activity}<div class="flex justify-between border-b py-2 text-sm"><span>{activity.title} ({activity.type})</span><time>{activity.dueAt ?? activity.date}</time></div>{/each}
+					</CardContent>
+				</Card>
+			{/if}
+
+			<!-- Sidebar -->
 			<div class="lg:col-span-1">
 				<!-- Course Information -->
 				<Card class="mb-6">

@@ -18,7 +18,7 @@ const config = {
 			strict: false
 		}),
 		paths: {
-			base: dev ? '' : '/open-edu'
+			base: process.env.PUBLIC_BASE_PATH ?? ''
 		}
 	}
 };

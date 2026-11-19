@@ -20,6 +20,7 @@ const mockFirestore = {
   getDoc: vi.fn(),
   getDocs: vi.fn(),
   addDoc: vi.fn(),
+  setDoc: vi.fn(),
   updateDoc: vi.fn(),
   deleteDoc: vi.fn(),
   query: vi.fn(),
@@ -53,6 +54,7 @@ describe("EnrollmentService", () => {
 
     // Setup default successful operations
     mockFirestore.addDoc.mockResolvedValue(mockDocRef);
+    mockFirestore.setDoc.mockResolvedValue(undefined);
     mockFirestore.updateDoc.mockResolvedValue(undefined);
     mockFirestore.deleteDoc.mockResolvedValue(undefined);
     mockFirestore.getDoc.mockResolvedValue(
@@ -75,18 +77,17 @@ describe("EnrollmentService", () => {
       mockFirestore.doc.mockReturnValue(mockDocRef);
       mockFirestore.getDoc.mockResolvedValue(courseSnap);
       mockFirestore.collection.mockReturnValue("mock-collection");
-      mockFirestore.addDoc.mockResolvedValue({
-        ...mockDocRef,
-        id: "enrollment-123",
-      });
 
       const result = await EnrollmentService.enrollUser(
         "user-123",
         "course-123",
       );
 
-      expect(mockFirestore.addDoc).toHaveBeenCalled();
-      expect(result).toBe("enrollment-123");
+      expect(mockFirestore.setDoc).toHaveBeenCalledWith(
+        mockDocRef,
+        expect.objectContaining({ id: "user-123_course-123" }),
+      );
+      expect(result).toBe("user-123_course-123");
     });
 
     test("should throw error if user is already enrolled", async () => {
@@ -151,12 +152,12 @@ describe("EnrollmentService", () => {
       mockFirestore.doc.mockReturnValue(mockDocRef);
       mockFirestore.getDoc.mockResolvedValue(courseSnap);
       mockFirestore.collection.mockReturnValue("mock-collection");
-      mockFirestore.addDoc.mockResolvedValue(mockDocRef);
+      mockFirestore.setDoc.mockResolvedValue(mockDocRef);
 
       await EnrollmentService.enrollUser("user-123", "course-123");
 
-      const addDocCall = mockFirestore.addDoc.mock.calls[0];
-      const enrollmentData = addDocCall[1];
+      const setDocCall = mockFirestore.setDoc.mock.calls[0];
+      const enrollmentData = setDocCall[1];
 
       expect(enrollmentData).toMatchObject({
         userId: "user-123",

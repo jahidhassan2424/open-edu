@@ -18,11 +18,16 @@ export const COLLECTIONS = {
 	ENROLLMENTS: 'enrollments',
 	COURSE_PROGRESS: 'courseProgress',
 	LESSONS: 'lessons',
+	QUIZZES: 'quizzes',
 	QUIZ_ATTEMPTS: 'quiz-attempts',
 	NOTIFICATIONS: 'notifications',
 	ANALYTICS: 'analytics',
-	ACHIEVEMENTS: 'achievements',
-	CERTIFICATES: 'certificates'
+	ACHIEVEMENTS: 'achievements'
+	,ACADEMIC_TERMS: 'academicTerms'
+	,ASSIGNMENTS: 'assignments'
+	,ASSIGNMENT_SUBMISSIONS: 'assignmentSubmissions'
+	,GRADE_CONFIGS: 'gradeConfigs'
+	,FINAL_RESULTS: 'finalResults'
 }
 
 // Legacy aliases for backward compatibility during migration
