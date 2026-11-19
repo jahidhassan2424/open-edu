@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm ci && npm --prefix functions ci",
-  "buildCommand": "npm --prefix functions run build && node -e \"require('fs').mkdirSync('public',{recursive:true})\"",
+  "buildCommand": "npm --prefix functions run build && node -e \"const fs=require('fs');fs.mkdirSync('public',{recursive:true});fs.writeFileSync('public/index.html','Open-EDU API')\"",
   "outputDirectory": "public",
   "functions": {
     "api/mongo.mjs": {
