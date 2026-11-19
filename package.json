@@ -3,6 +3,7 @@
     "private": true,
     "version": "1.6.0",
     "type": "module",
+    "main": "api/mongo.mjs",
     "scripts": {
         "dev": "vite dev --host 0.0.0.0",
         "build": "vite build",
