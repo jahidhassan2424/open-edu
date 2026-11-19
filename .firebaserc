@@ -1,5 +1,7 @@
 {
-  "projects": {},
+  "projects": {
+    "default": "rihla-4d460"
+  },
   "targets": {},
   "etags": {}
 }

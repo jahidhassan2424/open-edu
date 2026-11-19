@@ -26,6 +26,7 @@ export interface Quiz {
 	randomizeQuestions: boolean // Randomize question order
 	randomizeOptions: boolean // Randomize option order
 	allowReview: boolean // Allow reviewing quiz after completion
+	category?: string // Course-configured gradebook category
 	
 	// Ordering (v1.6.0)
 	order?: number // Quiz order within course for display purposes
@@ -71,6 +72,15 @@ export interface QuizQuestion {
 	acceptableAnswers?: string[] // Alternative correct answers
 	maxLength?: number // Max characters for essay
 	minLength?: number // Min characters for essay
+}
+
+/** A quiz payload that is safe to send to a learner. */
+export type LearnerQuizQuestion = Omit<QuizQuestion, 'correctAnswer' | 'acceptableAnswers' | 'explanation' | 'options'> & {
+	options?: Array<Omit<QuestionOption, 'isCorrect' | 'explanation'>>
+}
+
+export type LearnerQuiz = Omit<Quiz, 'questions'> & {
+	questions: LearnerQuizQuestion[]
 }
 
 export interface QuestionOption {

@@ -38,6 +38,7 @@
 	import QuizResults from '$lib/components/QuizResults.svelte'
 	import QuizAttemptHistory from '$lib/components/QuizAttemptHistory.svelte'
 	import * as QuizService from '$lib/services/quiz'
+	import { getLearnerQuiz, startLearnerQuizAttempt, submitLearnerQuiz } from '$lib/services/learner-quiz'
 	import type { Quiz, QuizAttempt, QuizAnswer } from '$lib/types/quiz'
 	
 	const courseId = $derived(page.params.courseId as string)
@@ -109,7 +110,9 @@
 	const canNavigateNext = $derived(
 		isCompleted || !currentLesson?.quiz
 	)
-	const isQuizLesson = $derived(!!currentLesson?.quiz)
+	const isQuizLesson = $derived(
+		!!currentLesson?.quiz || !!course?.quizzesMetadata?.some(quiz => quiz.lessonId === lessonId)
+	)
 	
 	// v1.6.0: Use lessonsMetadata for sidebar, fall back to legacy lessons array
 	const lessonsForSidebar = $derived.by<LessonMetadata[]>(() => {
@@ -309,7 +312,7 @@
 		await ProgressService.startLesson(authState.user!.id, courseId, lessonId)
 		
 		// Load quiz data if this lesson has a quiz
-		if (currentLesson?.quiz) {
+		if (courseData.quizzesMetadata?.some(quiz => quiz.lessonId === lessonId)) {
 			await loadQuizData()
 		}
 
@@ -539,14 +542,14 @@
 
 	// Load quiz data for quiz lessons
 	async function loadQuizData() {
-		if (!authState.user || !currentLesson || !currentLesson.quiz) return
+		if (!authState.user || !currentLesson) return
 		
 		loadingQuiz = true
 		try {
-			// Get quizzes for this lesson
-			const quizzes = await QuizService.getQuizzesByLesson(lessonId)
-			if (quizzes.length > 0) {
-				currentQuiz = quizzes[0] // Use first quiz (in future, could support multiple)
+			const learnerQuiz = await getLearnerQuiz(courseId, lessonId)
+			if (learnerQuiz) {
+				// The callable result intentionally contains no answer keys. Components only need display fields.
+				currentQuiz = learnerQuiz as Quiz
 				
 				// Load all previous attempts for history
 				allAttempts = await QuizService.getUserQuizAttempts(
@@ -555,12 +558,7 @@
 				)
 				
 				// Start a new attempt
-				currentAttempt = await QuizService.startQuizAttempt(
-					authState.user.id,
-					currentQuiz.id,
-					courseId,
-					lessonId
-				)
+				currentAttempt = await startLearnerQuizAttempt(currentQuiz.id)
 			}
 	} catch (err: unknown) {
 		console.error('Error loading quiz:', err)
@@ -581,16 +579,8 @@
 				Math.floor((Date.now() - startTime.getTime()) / 1000) : 
 				sessionTime
 
-			// Save all answers before submitting
-			for (const answer of answers) {
-				await QuizService.saveQuizAnswer(currentAttempt.id, answer)
-			}
-
-			// Submit quiz and get graded attempt
-			const gradedAttempt = await QuizService.submitQuizAttempt(
-				currentAttempt.id,
-				timeSpentSeconds
-			)
+			// Only answers cross the boundary; the callable derives every authoritative field.
+			const gradedAttempt = await submitLearnerQuiz(currentAttempt.id, answers.map(({ questionId, answer }) => ({ questionId, answer })))
 			
 			currentAttempt = gradedAttempt
 			showQuizResults = true
@@ -633,12 +623,7 @@
 		
 		// Start new attempt
 		try {
-			currentAttempt = await QuizService.startQuizAttempt(
-				authState.user.id,
-				currentQuiz.id,
-				courseId,
-				lessonId
-			)
+			currentAttempt = await startLearnerQuizAttempt(currentQuiz.id)
 			
 			// Reload attempt history to include the attempt we just completed
 			allAttempts = await QuizService.getUserQuizAttempts(
@@ -1154,11 +1139,12 @@
 												</div>
 											{/if}
 											
-											<QuizResults
+							<!-- Answer keys and explanations are deliberately not sent to learners. -->
+							<QuizResults
 												quiz={currentQuiz}
 												attempt={currentAttempt}
-												showCorrectAnswers={currentQuiz.showCorrectAnswers}
-												showExplanations={currentQuiz.showExplanations}
+				showCorrectAnswers={false}
+				showExplanations={false}
 												allowRetry={currentQuiz.allowMultipleAttempts}
 												allowShare={true}
 												studentName={authState.user?.displayName || authState.user?.email || 'Student'}

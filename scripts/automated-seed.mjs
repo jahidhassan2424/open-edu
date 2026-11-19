@@ -112,7 +112,6 @@ const adminUser = {
   id: USER_UID,
   email: USER_EMAIL,
   displayName: USER_DISPLAY_NAME,
-  role: 'admin',
   enrolledCourses: [],
   completedCourses: [],
   achievements: ['admin_access', 'platform_creator'],

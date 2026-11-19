@@ -36,6 +36,53 @@ import type { CourseImportData, QuizQuestionImportData } from "$lib/validation/c
 import { parseDurationToMinutes } from "$lib/utils/course-import";
 import type { Quiz, QuizQuestion } from "$lib/types";
 import type { QuestionOption } from "$lib/types/quiz";
+import { mongoProvider } from './mongo-provider';
+import { mongoCourseWrite } from './mongo-provider';
+
+function buildMongoImportPayload(data: CourseImportData, instructorId: string, instructorName: string) {
+  const id = `${instructorId}-${Date.now()}`
+  const now = new Date().toISOString()
+  const lessons = data.lessons.map((lesson, index) => ({
+    id: `${id}-lesson-${index + 1}`,
+    courseId: id,
+    title: lesson.title,
+    description: lesson.description ?? '',
+    content: lesson.content ?? '',
+    videoUrl: lesson.videoUrl ?? null,
+    duration: parseDurationToMinutes(lesson.duration),
+    order: index + 1,
+    isRequired: true,
+    completed: false,
+    createdAt: now,
+    updatedAt: now
+  }))
+  const quizzes = data.lessons.flatMap((lesson, index) => {
+    if (!lesson.questions?.length) return []
+    const lessonId = lessons[index].id
+    const questions = lesson.questions.map((question, order) => {
+      const type = question.type === 'multiple-choice' ? 'multiple_choice'
+        : question.type === 'multiple-select' ? 'multiple_select'
+        : question.type === 'true-false' ? 'true_false'
+        : question.type === 'fill-blank' ? 'fill_blank'
+        : question.type === 'short-answer' ? 'short_answer'
+        : question.type
+      const base = { id: question.id, type, question: question.question, points: question.points, order, explanation: question.explanation }
+      if (question.type === 'multiple-choice') return { ...base, options: question.options.map((text, option) => ({ id: `opt-${option}`, text, isCorrect: option === question.correctAnswer })), correctAnswer: `opt-${question.correctAnswer}` }
+      if (question.type === 'multiple-select') return { ...base, options: question.options.map((text, option) => ({ id: `opt-${option}`, text, isCorrect: question.correctAnswers.includes(option) })), correctAnswer: question.correctAnswers.map(option => `opt-${option}`) }
+      if (question.type === 'ordering') return { ...base, options: question.items.map((text, option) => ({ id: `opt-${option}`, text, isCorrect: false })), correctAnswer: question.correctOrder.join(',') }
+      if (question.type === 'matching') return { ...base, correctAnswer: JSON.stringify(question.pairs) }
+      return { ...base, correctAnswer: question.correctAnswer ?? '', ...('caseSensitive' in question ? { caseSensitive: question.caseSensitive ?? false } : {}) }
+    })
+    return [{ id: `${lessonId}-quiz`, lessonId, courseId: id, title: lesson.title, description: lesson.description ?? '', instructions: lesson.instructions ?? '', questions, category: lesson.category ?? 'quizzes', passingScore: lesson.passingScore, allowMultipleAttempts: lesson.allowMultipleAttempts, maxAttempts: lesson.maxAttempts, showCorrectAnswers: lesson.showCorrectAnswers, showExplanations: lesson.showExplanations, randomizeQuestions: lesson.randomizeQuestions, randomizeOptions: lesson.randomizeOptions, allowReview: lesson.allowReview, timeLimit: lesson.timeLimit, isPublished: data.isPublished, createdBy: instructorId, createdAt: now, updatedAt: now }]
+  })
+  const lessonsMetadata = lessons.map((lesson, index) => ({ id: lesson.id, title: lesson.title, description: lesson.description, order: lesson.order, type: data.lessons[index].questions?.length ? 'quiz' : data.lessons[index].videoUrl ? 'video' : 'content', duration: lesson.duration, hasQuiz: Boolean(data.lessons[index].questions?.length), isRequired: true }))
+  const quizzesMetadata = quizzes.map((quiz, index) => ({ id: quiz.id, lessonId: quiz.lessonId, title: quiz.title, description: quiz.description, order: index + 1, questionCount: quiz.questions.length, totalPoints: quiz.questions.reduce((sum, question) => sum + question.points, 0), passingScore: quiz.passingScore, timeLimit: quiz.timeLimit }))
+  const term = data.term ? { ...data.term, id: `${id}-term` } : undefined
+  const course = { id, title: data.title, description: data.description, instructorId, instructor: instructorName, thumbnail: data.thumbnail ?? 'https://placehold.co/400x225/6366f1/white?text=Course', category: data.category, difficulty: data.difficulty, duration: data.duration, level: data.level, price: data.price ?? 0, currency: data.currency, tags: data.tags, prerequisites: data.prerequisites, learningOutcomes: data.learningOutcomes, isPublished: data.isPublished, isFeatured: data.isFeatured, enrolled: 0, rating: 0, ratingCount: 0, lessons: [], chapters: [], lessonsMetadata, quizzesMetadata, totalLessons: lessons.length, totalQuizzes: quizzes.length, termId: term?.id, modules: data.modules ?? [], schedule: data.schedule ?? [], gradingCategories: data.gradingCategories ?? [], createdAt: now, updatedAt: now }
+  const assignments = (data.assignments ?? []).map(assignment => ({ ...assignment, category: assignment.category ?? 'assignments', courseId: id, createdBy: instructorId, createdAt: now, updatedAt: now }))
+  const gradeConfig = data.gradingCategories ? { courseId: id, weights: data.gradingCategories, letterScale: [{ min: 90, letter: 'A' }, { min: 80, letter: 'B' }, { min: 70, letter: 'C' }, { min: 60, letter: 'D' }, { min: 0, letter: 'F' }], updatedAt: now } : undefined
+  return { course, lessons, quizzes, assignments, term, gradeConfig }
+}
 
 // Course CRUD Operations
 export class CourseService {
@@ -43,6 +90,7 @@ export class CourseService {
    * Get a single course by ID
    */
   static async getCourse(courseId: string): Promise<Course | null> {
+    if (mongoProvider.enabled()) return mongoProvider.getCourse(courseId);
     try {
       const courseRef = doc(db, COLLECTIONS.COURSES, courseId);
       const courseSnap = await getDoc(courseRef);
@@ -75,6 +123,7 @@ export class CourseService {
     hasMore: boolean;
     nextCursor?: string;
   }> {
+    if (mongoProvider.enabled()) { const courses = await mongoProvider.getCourses(filters); return { courses, total: courses.length, hasMore: false, nextCursor: undefined }; }
     try {
       const courseQuery = collection(db, COLLECTIONS.COURSES);
       const queryConstraints: QueryConstraint[] = [];
@@ -216,6 +265,7 @@ export class CourseService {
     courseData: Omit<Course, 'id' | 'enrolled' | 'rating' | 'ratingCount' | 'lessons' | 'chapters' | 'createdAt' | 'updatedAt'>,
     instructorId: string,
   ): Promise<string> {
+    if (mongoProvider.enabled()) { const id = `${instructorId}-${Date.now()}`; await mongoCourseWrite('saveCourse', { ...courseData, id, instructorId, instructor: courseData.instructor ?? instructorId, enrolled: 0, lessons: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }); return id; }
     try {
       // Validate input
       const validatedData = createCourseSchema.parse({
@@ -261,6 +311,7 @@ export class CourseService {
    * Update an existing course
    */
   static async updateCourse(courseId: string, updates: Partial<Course>): Promise<void> {
+    if (mongoProvider.enabled()) { await mongoCourseWrite('saveCourse', { ...updates, id: courseId }); return; }
     try {
       // Validate updates
       const validatedUpdates = updateCourseSchema.parse({
@@ -673,6 +724,7 @@ export class CourseService {
     instructorId: string,
     instructorName: string,
   ): Promise<string> {
+    if (mongoProvider.enabled()) { const payload = buildMongoImportPayload(data, instructorId, instructorName); await mongoCourseWrite('importCourse', payload); return payload.course.id; }
     const batch = writeBatch(db);
     let courseId: string | null = null;
     
@@ -706,6 +758,12 @@ export class CourseService {
       const courseRef = doc(collection(db, COLLECTIONS.COURSES));
       courseId = courseRef.id;
       const finalCourseId: string = courseId;
+      let importedTermId: string | undefined;
+      if (data.term) {
+        const termRef = doc(collection(db, COLLECTIONS.ACADEMIC_TERMS));
+        importedTermId = termRef.id;
+        batch.set(termRef, { ...data.term, id: termRef.id });
+      }
       
       // Update lessons with courseId
       const lessonsWithCourseId = lessons.map((lesson): LessonDoc => ({
@@ -926,6 +984,11 @@ export class CourseService {
         quizzesMetadata,
         totalLessons: lessonsWithCourseId.length,
         totalQuizzes: quizzesMetadata.length,
+        ...(importedTermId && { termId: importedTermId }),
+        ...(data.modules && { modules: data.modules }),
+        ...(data.schedule && { schedule: data.schedule }),
+        ...(data.gradingCategories && { gradingCategories: data.gradingCategories }),
+        ...(data.sourceMetadata && { sourceMetadata: data.sourceMetadata }),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -945,6 +1008,16 @@ export class CourseService {
         ...courseDoc,
         id: finalCourseId,
       });
+
+      if (data.assignments) for (const assignment of data.assignments) {
+        const assignmentRef = doc(db, COLLECTIONS.ASSIGNMENTS, assignment.id);
+        batch.set(assignmentRef, { ...assignment, courseId: finalCourseId, createdBy: instructorId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      }
+      if (data.gradingCategories) {
+        const total = data.gradingCategories.reduce((sum, item) => sum + item.weight, 0);
+        if (Math.abs(total - 100) > 0.001) throw new Error('Grading category weights must total 100');
+        batch.set(doc(db, COLLECTIONS.GRADE_CONFIGS, finalCourseId), { courseId: finalCourseId, weights: data.gradingCategories, letterScale: [{ min: 90, letter: 'A' }, { min: 80, letter: 'B' }, { min: 70, letter: 'C' }, { min: 60, letter: 'D' }, { min: 0, letter: 'F' }], updatedAt: serverTimestamp() });
+      }
 
       // Commit all operations atomically
       await batch.commit();

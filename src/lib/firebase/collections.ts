@@ -9,6 +9,11 @@ export const COLLECTIONS = {
   COURSES: "courses",
   ENROLLMENTS: "enrollments",
   COURSE_PROGRESS: "courseProgress",
+  ACADEMIC_TERMS: "academicTerms",
+  ASSIGNMENTS: "assignments",
+  ASSIGNMENT_SUBMISSIONS: "assignmentSubmissions",
+  GRADE_CONFIGS: "gradeConfigs",
+  FINAL_RESULTS: "finalResults",
 
   // Learning content
   LESSONS: "lessons", // if stored separately from courses

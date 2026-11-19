@@ -165,8 +165,8 @@ export async function createQuizWithLesson(
 		updatedAt: now
 	}
 	
-	// Update the lesson to include the quiz data
-	// This is required by the validation schema
+	// This object is returned to the instructor UI only. Never persist it inside
+	// a readable course document: it contains question answer keys.
 	const lessonWithQuiz: Lesson = {
 		...newLesson,
 		quiz: createdQuiz
@@ -185,9 +185,9 @@ export async function createQuizWithLesson(
 		currentQuizCount + 1
 	)
 	
-	// Update course with lesson and quiz metadata
+	// Persist only the key-free lesson and lightweight quiz metadata.
 	batch.update(courseRef, {
-		lessons: arrayUnion(lessonWithQuiz),
+		lessons: arrayUnion(newLesson),
 		quizzesMetadata: arrayUnion(quizMetadata),
 		totalQuizzes: increment(1),
 		updatedAt: serverTimestamp()
@@ -599,16 +599,16 @@ function gradeQuizAnswers(quiz: Quiz, answers: QuizAnswer[]): QuizAnswer[] {
 /**
  * Calculate score from graded answers
  */
-function calculateScore(
+export function calculateScore(
 	quiz: Quiz,
 	gradedAnswers: QuizAnswer[]
 ): { score: number; pointsEarned: number; isPassed: boolean } {
-	const totalQuestions = quiz.questions.length
-	const correctCount = gradedAnswers.filter(a => a.isCorrect).length
+	const totalPoints = quiz.questions.reduce((sum, question) => sum + question.points, 0)
 	const pointsEarned = gradedAnswers.reduce((sum, a) => sum + a.pointsEarned, 0)
 	
-	// Calculate score percentage
-	const score = totalQuestions > 0 ? (correctCount / totalQuestions) * 100 : 0
+	// Question weights are authoritative: two correct 1-point questions must not
+	// equal one correct 20-point question.
+	const score = totalPoints > 0 ? (pointsEarned / totalPoints) * 100 : 0
 	const isPassed = score >= quiz.passingScore
 	
 	return {

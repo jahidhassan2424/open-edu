@@ -7,7 +7,7 @@
  * - src/lib/firebase/collections.ts
  * - src/lib/firebase/schemas.ts 
  * - scripts/firebase-collections.mjs
- * - firestore.rules
+ * - the Firestore rules file configured in firebase.json
  * 
  * Helps prevent collection naming mismatches and schema validation issues.
  */
@@ -89,13 +89,16 @@ async function loadSchemasFromTypeScript() {
 
 async function loadFirestoreRules() {
 	try {
-		const rulesPath = resolve('firestore.rules')
+		const firebaseConfig = JSON.parse(await readFile(resolve('firebase.json'), 'utf-8'))
+		const rulesFile = firebaseConfig.firestore?.rules
+		if (!rulesFile) throw new Error('firebase.json does not configure firestore.rules')
+		const rulesPath = resolve(rulesFile)
 		const content = await readFile(rulesPath, 'utf-8')
 		
 		// Extract collection references from rules (look for match /collection/{document})
-		const collectionMatches = content.match(/match \/(\w+)\/\\{[^}]+\\}/g) || []
+		const collectionMatches = content.match(/match \/([A-Za-z0-9-]+)\/\{[^}]+\}/g) || []
 		const collections = collectionMatches.map(match => {
-			const collectionMatch = match.match(/match \/(\w+)\//)
+			const collectionMatch = match.match(/match \/([A-Za-z0-9-]+)\//)
 			return collectionMatch ? collectionMatch[1] : null
 		}).filter(Boolean)
 		

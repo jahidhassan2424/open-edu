@@ -2,6 +2,10 @@
 import type { Quiz, QuizQuestion, QuestionType } from './types/quiz';
 // Import v1.6.0 metadata types
 import type { LessonMetadata, QuizMetadata } from './types/lesson';
+import type { WeeklyModule, AcademicActivity } from './types/academic';
+import type { Assignment, AssignmentSubmission } from './types/assignment';
+export type { AcademicTerm, WeeklyModule, ModuleResource, AcademicActivity } from './types/academic';
+export type { Assignment, AssignmentSubmission, AssignmentRubricCriterion } from './types/assignment';
 
 export type { Quiz, QuizQuestion, QuestionType };
 export type { LessonMetadata, QuizMetadata };
@@ -62,6 +66,12 @@ export interface Course {
   quizzesMetadata?: QuizMetadata[]; // Lightweight quiz info for listing
   totalLessons?: number; // Denormalized count for quick access
   totalQuizzes?: number; // Denormalized count for quick access
+  termId?: string;
+  modules?: WeeklyModule[];
+  schedule?: AcademicActivity[];
+  gradingCategories?: { category: string; weight: number }[];
+  sourceMetadata?: Record<string, unknown>;
+  assignments?: import('./types/assignment').Assignment[];
 }
 
 export interface Lesson {

@@ -7,6 +7,7 @@ import {
   getDoc,
   getDocs,
   addDoc,
+  setDoc,
   updateDoc,
   query,
   where,
@@ -17,6 +18,7 @@ import { db } from "$lib/firebase";
 import type { Enrollment } from "$lib/types";
 import { COLLECTIONS } from "$lib/firebase/collections";
 import { convertTimestamps } from "$lib/utils/firestore";
+import { mongoProvider } from './mongo-provider';
 
 // Enrollment Service
 export class EnrollmentService {
@@ -24,6 +26,7 @@ export class EnrollmentService {
    * Enroll a user in a course
    */
   static async enrollUser(userId: string, courseId: string): Promise<string> {
+    if (mongoProvider.enabled()) return mongoProvider.enroll(courseId)
     try {
       // Check if user is already enrolled
       const existingEnrollment = await this.getEnrollment(userId, courseId);
@@ -58,13 +61,11 @@ export class EnrollmentService {
         notes: "",
       };
 
-      const docRef = await addDoc(
-        collection(db, COLLECTIONS.ENROLLMENTS),
-        enrollmentData,
-      );
-
-      // Update enrollment ID
-      await updateDoc(docRef, { id: docRef.id });
+      // Deterministic IDs let Firestore rules verify ownership without trusting
+      // caller-provided fields.
+      const enrollmentId = `${userId}_${courseId}`;
+      const docRef = doc(db, COLLECTIONS.ENROLLMENTS, enrollmentId);
+      await setDoc(docRef, { ...enrollmentData, id: enrollmentId });
 
       // Increment course enrollment count
       await updateDoc(courseRef, {
@@ -75,7 +76,7 @@ export class EnrollmentService {
       // Create initial progress record
       await this.createInitialProgress(userId, courseId);
 
-      return docRef.id;
+      return enrollmentId;
     } catch (error) {
       console.error("Error enrolling user:", error);
       throw error;
@@ -123,6 +124,7 @@ export class EnrollmentService {
     userId: string,
     courseId: string,
   ): Promise<Enrollment | null> {
+    if (mongoProvider.enabled()) return mongoProvider.getEnrollment(courseId)
     try {
       const q = query(
         collection(db, COLLECTIONS.ENROLLMENTS),

@@ -1,5 +1,24 @@
 {
   "indexes": [
+    {"collectionGroup":"academicTerms","queryScope":"COLLECTION","fields":[{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"startDate","order":"ASCENDING"}]},
+    {"collectionGroup":"courses","queryScope":"COLLECTION","fields":[{"fieldPath":"termId","order":"ASCENDING"},{"fieldPath":"isPublished","order":"ASCENDING"}]},
+    {
+      "collectionGroup": "quizzes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "courseId", "order": "ASCENDING" },
+        { "fieldPath": "lessonId", "order": "ASCENDING" },
+        { "fieldPath": "isPublished", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "quiz-attempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "quizId", "order": "ASCENDING" }
+      ]
+    },
     {
       "collectionGroup": "courses",
       "queryScope": "COLLECTION",
