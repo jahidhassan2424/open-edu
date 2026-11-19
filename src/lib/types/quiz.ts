@@ -26,6 +26,7 @@ export interface Quiz {
 	randomizeQuestions: boolean // Randomize question order
 	randomizeOptions: boolean // Randomize option order
 	allowReview: boolean // Allow reviewing quiz after completion
+	category?: string // Course-configured gradebook category
 	
 	// Ordering (v1.6.0)
 	order?: number // Quiz order within course for display purposes

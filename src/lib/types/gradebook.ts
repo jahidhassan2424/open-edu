@@ -1,4 +1,4 @@
-export type AssessmentCategory = 'quizzes' | 'readingResponses' | 'midterm' | 'bookReview' | 'final'
+export type AssessmentCategory = string
 export interface AssessmentCategoryWeight { category: AssessmentCategory; weight: number }
 export interface LetterGradeScale { min: number; letter: string }
 export interface GradeEntry { id: string; category: AssessmentCategory; title: string; pointsEarned?: number; pointsPossible: number; status: 'pending' | 'missing' | 'graded'; released: boolean }

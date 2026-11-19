@@ -3,6 +3,7 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   signOut,
+  updateProfile as updateFirebaseProfile,
   onAuthStateChanged,
   type User as FirebaseUser,
 } from "firebase/auth";
@@ -10,6 +11,8 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import type { User } from "./types";
 import { browser } from "$app/environment";
+
+const usesMongoProvider = () => import.meta.env.PUBLIC_DATA_PROVIDER === 'mongodb';
 
 // Convert Firebase User to our User type
 function mapFirebaseUser(
@@ -65,9 +68,9 @@ export function initializeAuth() {
 
     if (firebaseUser) {
       try {
-        // Get additional user data from Firestore
-        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-        const userData = userDoc.data();
+        const userData = usesMongoProvider()
+          ? undefined
+          : (await getDoc(doc(db, "users", firebaseUser.uid))).data();
         const token = await firebaseUser.getIdTokenResult();
         const role = token.claims.role === 'admin' || token.claims.role === 'instructor'
           ? token.claims.role
@@ -104,11 +107,10 @@ export async function signInWithGoogle(): Promise<User> {
 
     const result = await signInWithPopup(auth, provider);
 
-    // Check if user document exists and get user data
     const userDocRef = doc(db, "users", result.user.uid);
-    const userDoc = await getDoc(userDocRef);
-    const isNewUser = !userDoc.exists();
-    const existingUserData = userDoc.data();
+    const userDoc = usesMongoProvider() ? null : await getDoc(userDocRef);
+    const isNewUser = userDoc ? !userDoc.exists() : false;
+    const existingUserData = userDoc?.data();
     const token = await result.user.getIdTokenResult();
     const role = token.claims.role === 'admin' || token.claims.role === 'instructor'
       ? token.claims.role
@@ -138,7 +140,7 @@ export async function signInWithGoogle(): Promise<User> {
       }),
     };
 
-    await setDoc(userDocRef, userUpdateData, { merge: true });
+    if (!usesMongoProvider()) await setDoc(userDocRef, userUpdateData, { merge: true });
 
     return user;
   } catch (error) {
@@ -175,10 +177,11 @@ export async function updateUserProfile(
   try {
     authState.error = null;
 
-    // Update Firestore document (Firebase Auth profile is managed by Google)
-    await setDoc(doc(db, "users", auth.currentUser.uid), updates, {
-      merge: true,
-    });
+    if (usesMongoProvider()) {
+      await updateFirebaseProfile(auth.currentUser, updates);
+    } else {
+      await setDoc(doc(db, "users", auth.currentUser.uid), updates, { merge: true });
+    }
 
     // Update local state
     if (authState.user) {

@@ -26,10 +26,15 @@ vite.config.ts.timestamp-*
 firebase-debug.log
 firestore.rules
 *-debug.log
+*.log
+*.err
 /.idea/
 
 # Coverage reports
 coverage/
+
+# Generated course exports may contain protected answer keys
+/exports/
 
 # Paraglide
 src/lib/paraglide

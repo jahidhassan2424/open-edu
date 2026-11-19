@@ -114,6 +114,7 @@ const lessonImportSchema = z
 		randomizeQuestions: z.boolean().default(false),
 		randomizeOptions: z.boolean().default(false),
 		allowReview: z.boolean().default(true)
+		,category: z.string().min(1).optional()
 	})
 	.refine(
 		(data) => {
@@ -171,7 +172,7 @@ export const courseImportSchema = z
 
 		// Lessons (nested)
 		lessons: z.array(lessonImportSchema).min(1, 'Course must have at least one lesson')
-		,term: termSchema.optional(), modules: z.array(moduleSchema).optional(), schedule: z.array(activitySchema).optional(), assignments: z.array(z.object({ id: z.string(), title: z.string().min(1), instructions: z.string(), points: z.number().positive(), dueAt: z.string(), rubric: z.array(z.object({ id: z.string(), label: z.string(), description: z.string(), points: z.number().nonnegative() })).default([]), moduleId: z.string().optional(), isPublished: z.boolean().default(false) })).optional(), gradingCategories: z.array(z.object({ category: z.string(), weight: z.number().min(0).max(100) })).optional(), sourceMetadata: z.record(z.string(), z.unknown()).optional()
+		,term: termSchema.optional(), modules: z.array(moduleSchema).optional(), schedule: z.array(activitySchema).optional(), assignments: z.array(z.object({ id: z.string(), title: z.string().min(1), instructions: z.string(), points: z.number().positive(), dueAt: z.string(), rubric: z.array(z.object({ id: z.string(), label: z.string(), description: z.string(), points: z.number().nonnegative() })).default([]), category: z.string().min(1).optional(), moduleId: z.string().optional(), isPublished: z.boolean().default(false) })).optional(), gradingCategories: z.array(z.object({ category: z.string(), weight: z.number().min(0).max(100) })).optional(), sourceMetadata: z.record(z.string(), z.unknown()).optional()
 	})
 	.refine(
 		(data) => {
