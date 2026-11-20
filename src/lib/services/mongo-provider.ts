@@ -1,10 +1,12 @@
 import { auth } from '$lib/firebase'
+import { PUBLIC_DATA_PROVIDER } from '$env/static/public'
+import * as publicEnv from '$env/static/public'
 import type { Course, Lesson } from '$lib/types'
 import type { AcademicTerm } from '$lib/types/academic'
 import type { Enrollment, UserProgress } from '$lib/types'
 import type { Assignment } from '$lib/types/assignment'
-const enabled = () => import.meta.env.PUBLIC_DATA_PROVIDER === 'mongodb'
-const apiUrl = (path: string) => { const base = (import.meta.env.PUBLIC_API_BASE_URL ?? '').replace(/\/$/, ''); if (enabled() && !base) throw new Error('PUBLIC_API_BASE_URL is required when PUBLIC_DATA_PROVIDER=mongodb.'); return `${base}${path}` }
+const enabled = () => PUBLIC_DATA_PROVIDER === 'mongodb'
+const apiUrl = (path: string) => { const base = ((publicEnv as Record<string, string | undefined>).PUBLIC_API_BASE_URL ?? '').replace(/\/$/, ''); if (enabled() && !base) throw new Error('PUBLIC_API_BASE_URL is required when PUBLIC_DATA_PROVIDER=mongodb.'); return `${base}${path}` }
 async function call<T>(operation: string, data: unknown): Promise<T> { const user = auth.currentUser; if (!user) throw new Error('Sign-in is required.'); const token = await user.getIdToken(); const response = await fetch(apiUrl('/api/mongo'), { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ operation, data }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? 'MongoDB request failed'); return body.data as T }
 export const mongoProvider = { enabled, getCourse: (id: string) => call<Course | null>('getCourse', { id }), getCourses: (filter = {}) => call<Course[]>('listCourses', { filter }), getTerms: () => call<AcademicTerm[]>('listTerms', {}), getLessons: (courseId: string) => call<Lesson[]>('listLessons', { courseId }), getEnrollment: (courseId: string) => call<Enrollment | null>('getEnrollment', { courseId }), enroll: (courseId: string) => call<string>('enroll', { courseId }), getProgress: (courseId: string) => call<UserProgress | null>('getProgress', { courseId }), saveProgress: (courseId: string, progress: Partial<UserProgress>) => call<UserProgress>('saveProgress', { courseId, progress }), getQuiz: (quizId: string) => call<any>('getQuiz', { quizId }), startQuiz: (quizId: string) => call<any>('startQuiz', { quizId }), submitQuiz: (attemptId: string, answers: unknown[]) => call<any>('submitQuiz', { attemptId, answers }), getAssignments: (courseId: string) => call<Assignment[]>('listAssignments', { courseId }), submitAssignment: (data: { assignmentId: string; text: string }) => call<any>('submitAssignment', data), gradeAssignment: (data: { submissionId: string; pointsEarned: number; feedback?: string; released: boolean }) => call<any>('gradeAssignment', data) }
 export const getMongoGradebook = (courseId: string, userId?: string) => call<any>('getGradebook', { courseId, userId })
