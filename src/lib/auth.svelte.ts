@@ -11,8 +11,9 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import type { User } from "./types";
 import { browser } from "$app/environment";
+import { PUBLIC_DATA_PROVIDER } from "$env/static/public";
 
-const usesMongoProvider = () => import.meta.env.PUBLIC_DATA_PROVIDER === 'mongodb';
+const usesMongoProvider = () => PUBLIC_DATA_PROVIDER === 'mongodb';
 
 // Convert Firebase User to our User type
 function mapFirebaseUser(
