@@ -1,13 +1,17 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { getIdToken, fetchMock } = vi.hoisted(() => ({
+const { auth, getIdToken, fetchMock, onAuthStateChanged } = vi.hoisted(() => ({
+  auth: { currentUser: null as any },
   getIdToken: vi.fn().mockResolvedValue('firebase-id-token'),
-  fetchMock: vi.fn()
+  fetchMock: vi.fn(),
+  onAuthStateChanged: vi.fn()
 }))
 
 vi.mock('$lib/firebase', () => ({
-  auth: { currentUser: { getIdToken } }
+  auth
 }))
+
+vi.mock('firebase/auth', () => ({ onAuthStateChanged }))
 
 vi.mock('$env/static/public', () => ({
   PUBLIC_DATA_PROVIDER: 'mongodb',
@@ -19,6 +23,13 @@ vi.stubGlobal('fetch', fetchMock)
 const { mongoProvider } = await import('./mongo-provider')
 
 describe('MongoDB provider', () => {
+  beforeEach(() => {
+    auth.currentUser = { getIdToken }
+    getIdToken.mockClear().mockResolvedValue('firebase-id-token')
+    fetchMock.mockReset()
+    onAuthStateChanged.mockReset()
+  })
+
   it('selects MongoDB and sends authenticated requests to the configured Vercel API', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ data: [] }) })
 
@@ -32,6 +43,22 @@ describe('MongoDB provider', () => {
         headers: expect.objectContaining({ Authorization: 'Bearer firebase-id-token' }),
         body: JSON.stringify({ operation: 'listCourses', data: { filter: { isPublished: true } } })
       })
+    )
+  })
+
+  it('waits for Firebase authentication before sending the initial course request', async () => {
+    auth.currentUser = null
+    onAuthStateChanged.mockImplementationOnce((_auth, callback) => {
+      callback({ getIdToken })
+      return vi.fn()
+    })
+    fetchMock.mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ data: [] }) })
+
+    await expect(mongoProvider.getCourses()).resolves.toEqual([])
+    expect(onAuthStateChanged).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://open-edu-9hgu.vercel.app/api/mongo',
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer firebase-id-token' }) })
     )
   })
 })
