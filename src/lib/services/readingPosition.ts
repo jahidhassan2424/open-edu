@@ -8,6 +8,7 @@
 import { db } from '$lib/firebase'
 import { collection, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import type { ReadingProgressState } from './readingProgress'
+import { mongoProvider } from './mongo-provider'
 
 export interface ReadingPosition {
 	userId: string
@@ -137,6 +138,7 @@ export class ReadingPositionManager {
 export async function saveReadingPosition(
 	position: Omit<ReadingPosition, 'updatedAt'>
 ): Promise<void> {
+	if (mongoProvider.enabled()) return mongoProvider.saveReadingPosition(position)
 	const positionId = `${position.userId}_${position.lessonId}`
 	const positionRef = doc(collection(db, 'readingPositions'), positionId)
 
@@ -157,6 +159,7 @@ export async function loadReadingPosition(
 	userId: string,
 	lessonId: string
 ): Promise<ReadingPosition | null> {
+	if (mongoProvider.enabled()) return mongoProvider.loadReadingPosition(lessonId)
 	try {
 		const positionId = `${userId}_${lessonId}`
 		const positionRef = doc(collection(db, 'readingPositions'), positionId)
@@ -206,6 +209,7 @@ export function restoreScrollPosition(scrollTop: number, smooth: boolean = true)
  * Delete reading position (e.g., when lesson is completed)
  */
 export async function deleteReadingPosition(userId: string, lessonId: string): Promise<void> {
+	if (mongoProvider.enabled()) { await mongoProvider.deleteReadingPosition(lessonId); return }
 	try {
 		const positionId = `${userId}_${lessonId}`
 		const positionRef = doc(collection(db, 'readingPositions'), positionId)

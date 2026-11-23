@@ -56,6 +56,7 @@ vi.mock('firebase/firestore', () => ({
 vi.mock('$lib/firebase', () => ({
 	db: 'mock-db'
 }))
+vi.mock('./mongo-provider', () => ({ mongoProvider: { enabled: () => false } }))
 
 // Import service after mocks
 const {

@@ -32,6 +32,7 @@ const mockFirestore = {
 // Mock Firebase before importing services
 vi.mock("firebase/firestore", () => mockFirestore)
 vi.mock("$lib/firebase", () => ({ db: "mock-db-instance" }))
+vi.mock('./mongo-provider', () => ({ mongoProvider: { enabled: () => false }, mongoCourseWrite: vi.fn() }))
 
 // Mock validation schemas
 vi.mock("$lib/firebase/schemas", () => ({

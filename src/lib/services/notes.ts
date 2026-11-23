@@ -37,6 +37,7 @@ import type {
 	NotesResult,
 	NoteStats
 } from '$lib/types/notes'
+import { mongoProvider } from './mongo-provider'
 
 // Collection names
 const NOTES_COLLECTION = 'notes'
@@ -51,6 +52,7 @@ export class NotesService {
 	 * Create a new note
 	 */
 	static async createNote(input: CreateNoteInput): Promise<string> {
+		if (mongoProvider.enabled()) return mongoProvider.createNote(input)
 		try {
 			const noteData = {
 				...input,
@@ -70,6 +72,7 @@ export class NotesService {
 	 * Get a note by ID
 	 */
 	static async getNote(noteId: string): Promise<Note | null> {
+		if (mongoProvider.enabled()) return mongoProvider.getNote(noteId)
 		try {
 			const docRef = doc(db, NOTES_COLLECTION, noteId)
 			const docSnap = await getDoc(docRef)
@@ -92,6 +95,7 @@ export class NotesService {
 	 * Update a note
 	 */
 	static async updateNote(noteId: string, input: UpdateNoteInput): Promise<void> {
+		if (mongoProvider.enabled()) return mongoProvider.updateNote(noteId, input)
 		try {
 			const docRef = doc(db, NOTES_COLLECTION, noteId)
 			await updateDoc(docRef, {
@@ -108,6 +112,7 @@ export class NotesService {
 	 * Delete a note
 	 */
 	static async deleteNote(noteId: string): Promise<void> {
+		if (mongoProvider.enabled()) return mongoProvider.deleteNote(noteId)
 		try {
 			const docRef = doc(db, NOTES_COLLECTION, noteId)
 			await deleteDoc(docRef)
@@ -128,6 +133,7 @@ export class NotesService {
 		pageSize: number = 20,
 		lastDoc?: DocumentSnapshot
 	): Promise<NotesResult> {
+		if (mongoProvider.enabled()) return mongoProvider.getNotes(userId, filters, sortBy, sortOrder, pageSize, typeof lastDoc === 'string' ? lastDoc : undefined)
 		try {
 			const constraints: QueryConstraint[] = [
 				where('userId', '==', userId)
@@ -220,6 +226,7 @@ export class NotesService {
 	 * Create a new bookmark
 	 */
 	static async createBookmark(input: CreateBookmarkInput): Promise<string> {
+		if (mongoProvider.enabled()) return mongoProvider.createBookmark(input)
 		try {
 			const bookmarkData = {
 				...input,
@@ -242,6 +249,7 @@ export class NotesService {
 		courseId: string,
 		lessonId: string
 	): Promise<Bookmark[]> {
+		if (mongoProvider.enabled()) return mongoProvider.getLessonBookmarks(courseId, lessonId)
 		try {
 			const q = query(
 				collection(db, BOOKMARKS_COLLECTION),
@@ -272,6 +280,7 @@ export class NotesService {
 	 * Delete a bookmark
 	 */
 	static async deleteBookmark(bookmarkId: string): Promise<void> {
+		if (mongoProvider.enabled()) return mongoProvider.deleteBookmark(bookmarkId)
 		try {
 			const docRef = doc(db, BOOKMARKS_COLLECTION, bookmarkId)
 			await deleteDoc(docRef)
@@ -287,6 +296,7 @@ export class NotesService {
 	 * Create a new highlight
 	 */
 	static async createHighlight(input: CreateHighlightInput): Promise<string> {
+		if (mongoProvider.enabled()) return mongoProvider.createHighlight(input)
 		try {
 			const highlightData = {
 				...input,
@@ -305,6 +315,7 @@ export class NotesService {
 	 * Update a highlight
 	 */
 	static async updateHighlight(highlightId: string, input: UpdateHighlightInput): Promise<void> {
+		if (mongoProvider.enabled()) return mongoProvider.updateHighlight(highlightId, input)
 		try {
 			const docRef = doc(db, HIGHLIGHTS_COLLECTION, highlightId)
 			await updateDoc(docRef, {
@@ -325,6 +336,7 @@ export class NotesService {
 		courseId: string,
 		lessonId: string
 	): Promise<Highlight[]> {
+		if (mongoProvider.enabled()) return mongoProvider.getLessonHighlights(courseId, lessonId)
 		try {
 			const q = query(
 				collection(db, HIGHLIGHTS_COLLECTION),
@@ -355,6 +367,7 @@ export class NotesService {
 	 * Delete a highlight
 	 */
 	static async deleteHighlight(highlightId: string): Promise<void> {
+		if (mongoProvider.enabled()) return mongoProvider.deleteHighlight(highlightId)
 		try {
 			const docRef = doc(db, HIGHLIGHTS_COLLECTION, highlightId)
 			await deleteDoc(docRef)
@@ -370,6 +383,7 @@ export class NotesService {
 	 * Get note statistics for a user
 	 */
 	static async getNoteStats(userId: string): Promise<NoteStats> {
+		if (mongoProvider.enabled()) return mongoProvider.getNoteStats()
 		try {
 			// Get all notes
 			const notesQuery = query(

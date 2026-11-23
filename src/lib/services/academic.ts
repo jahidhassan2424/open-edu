@@ -25,8 +25,16 @@ export async function getAcademicTerms(): Promise<AcademicTerm[]> {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as AcademicTerm))
 }
 export async function saveAcademicTerm(term: Omit<AcademicTerm, 'id'>, id?: string): Promise<string> {
+  if (mongoProvider.enabled()) {
+    const termId = id ?? crypto.randomUUID()
+    await mongoProvider.saveTerm({ ...term, id: termId })
+    return termId
+  }
   const ref = id ? doc(db, COLLECTIONS.ACADEMIC_TERMS, id) : doc(collection(db, COLLECTIONS.ACADEMIC_TERMS))
   await setDoc(ref, { ...term, id: ref.id })
   return ref.id
 }
-export async function deleteAcademicTerm(id: string): Promise<void> { await deleteDoc(doc(db, COLLECTIONS.ACADEMIC_TERMS, id)) }
+export async function deleteAcademicTerm(id: string): Promise<void> {
+  if (mongoProvider.enabled()) return mongoProvider.deleteTerm(id)
+  await deleteDoc(doc(db, COLLECTIONS.ACADEMIC_TERMS, id))
+}

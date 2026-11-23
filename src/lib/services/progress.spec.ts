@@ -29,6 +29,7 @@ vi.mock("firebase/firestore", () => ({
 vi.mock("$lib/firebase", () => ({
   db: {},
 }));
+vi.mock("./mongo-provider", () => ({ mongoProvider: { enabled: () => false } }));
 
 vi.mock("$lib/firebase/collections", () => ({
   COLLECTIONS: {

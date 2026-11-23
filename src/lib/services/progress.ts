@@ -207,6 +207,15 @@ export class ProgressService {
     score: number,
     timeSpent: number,
   ): Promise<void> {
+    if (mongoProvider.enabled()) {
+      const progress = await this.ensureProgressRecord(userId, courseId);
+      const quizAttempts = { ...(progress.quizAttempts ?? {}), [lessonId]: (progress.quizAttempts?.[lessonId] ?? 0) + 1 };
+      const quizScores = { ...(progress.quizScores ?? {}) };
+      if (score > (quizScores[lessonId] ?? 0)) quizScores[lessonId] = score;
+      const values = Object.values(quizScores);
+      await mongoProvider.saveProgress(courseId, { ...progress, quizAttempts, quizScores, totalTimeSpent: (progress.totalTimeSpent ?? 0) + timeSpent, averageQuizScore: values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length * 10) / 10 : 0, lastAccessedAt: new Date().toISOString() });
+      return;
+    }
     try {
       const progress = await this.ensureProgressRecord(userId, courseId);
 
@@ -295,6 +304,13 @@ export class ProgressService {
     nextLesson: Lesson | null;
     completionRate: number;
   }> {
+    if (mongoProvider.enabled()) {
+      const [progress, course] = await Promise.all([this.getCourseProgress(userId, courseId), (await import('./courses')).CourseService.getCourse(courseId)]);
+      const lessons = course?.lessonsMetadata ?? course?.lessons ?? [];
+      const nextLesson = progress ? [...lessons].sort((a, b) => a.order - b.order).find(lesson => !progress.completedLessons.includes(lesson.id)) ?? null : null;
+      const completionRate = progress && lessons.length ? Math.round(progress.completedLessons.length / lessons.length * 1000) / 10 : 0;
+      return { progress, course, nextLesson: nextLesson ? { id: nextLesson.id, title: nextLesson.title } as Lesson : null, completionRate };
+    }
     try {
       const [progress, courseSnap] = await Promise.all([
         this.getCourseProgress(userId, courseId),
@@ -352,6 +368,15 @@ export class ProgressService {
     userId: string,
     courseId: string,
   ): Promise<void> {
+    if (mongoProvider.enabled()) {
+      const progress = await this.getCourseProgress(userId, courseId);
+      if (!progress) return;
+      const now = new Date();
+      const days = Math.floor((now.getTime() - new Date(progress.lastActiveDate || progress.lastAccessedAt).getTime()) / 86400000);
+      const streakDays = days === 1 ? (progress.streakDays || 0) + 1 : days > 1 ? 1 : progress.streakDays || 0;
+      await mongoProvider.saveProgress(courseId, { ...progress, streakDays, lastActiveDate: now.toISOString(), lastAccessedAt: now.toISOString() });
+      return;
+    }
     try {
       const progress = await this.getCourseProgress(userId, courseId);
 
@@ -397,6 +422,11 @@ export class ProgressService {
     userId: string,
     courseId: string,
   ): Promise<void> {
+    if (mongoProvider.enabled()) {
+      const now = new Date().toISOString();
+      await mongoProvider.saveProgress(courseId, { id: `${userId}_${courseId}`, userId, courseId, enrolledAt: now, lastAccessedAt: now, completedLessons: [], progressPercentage: 0, totalTimeSpent: 0, sessionCount: 0, averageSessionTime: 0, quizScores: {}, quizAttempts: {}, averageQuizScore: 0, achievements: [], totalPoints: 0, streakDays: 0, lastActiveDate: now });
+      return;
+    }
     try {
       const progressData = {
         userId,

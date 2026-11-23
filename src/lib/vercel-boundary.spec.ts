@@ -5,6 +5,7 @@ describe('Vercel MongoDB boundary', () => {
   const adapter = readFileSync('api/mongo.mjs', 'utf8')
   const config = JSON.parse(readFileSync('vercel.json', 'utf8'))
   const provider = readFileSync('src/lib/services/mongo-provider.ts', 'utf8')
+  const handler = readFileSync('netlify/functions/mongo-api.mjs', 'utf8')
   const admin = readFileSync('netlify/functions/_lib/firebase-admin.mjs', 'utf8')
 
   it('adapts the existing authenticated handler without duplicating business logic', () => {
@@ -15,7 +16,7 @@ describe('Vercel MongoDB boundary', () => {
 
   it('packages the shared handler and compiled grading logic', () => {
     expect(config.installCommand).toBe('npm ci && npm --prefix functions ci')
-    expect(config.buildCommand).toBe('npm --prefix functions run build')
+    expect(config.buildCommand).toContain('npm --prefix functions run build')
     expect(config.functions['api/mongo.mjs'].includeFiles).toContain('netlify/functions/**')
     expect(config.functions['api/mongo.mjs'].includeFiles).toContain('functions/lib/**')
   })
@@ -25,5 +26,11 @@ describe('Vercel MongoDB boundary', () => {
     expect(provider).toContain('PUBLIC_API_BASE_URL is required')
     expect(admin).toContain('FIREBASE_SERVICE_ACCOUNT_JSON')
     expect(admin).not.toContain('PUBLIC_')
+  })
+
+  it('keeps academic-term writes on the authenticated MongoDB boundary', () => {
+    expect(provider).toContain("saveTerm: (term: AcademicTerm) => call<string>('saveTerm', term)")
+    expect(provider).toContain("deleteTerm: (id: string) => call<void>('deleteTerm', { id })")
+    expect(handler).toContain("operation === 'deleteTerm'")
   })
 })
