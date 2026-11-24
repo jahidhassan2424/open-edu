@@ -25,6 +25,7 @@ vi.mock('firebase/firestore', () => ({
 	startAfter: vi.fn(),
 	serverTimestamp: vi.fn(() => ({ _serverTimestamp: true }))
 }))
+vi.mock('./mongo-provider', () => ({ mongoProvider: { enabled: () => false } }))
 
 describe('NotesService - Create Operations', () => {
 	beforeEach(() => {

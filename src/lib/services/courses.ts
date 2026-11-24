@@ -362,6 +362,7 @@ export class CourseService {
    * - All reading positions
    */
   static async deleteCourse(courseId: string): Promise<void> {
+    if (mongoProvider.enabled()) { await mongoCourseWrite('deleteCourse', { courseId }); return; }
     try {
       let totalDeleteCount = 0;
       const BATCH_SIZE = 50; // Small batches to avoid security rule read limits
@@ -499,6 +500,7 @@ export class CourseService {
     courseId: string,
     isPublished: boolean,
   ): Promise<void> {
+    if (mongoProvider.enabled()) { await mongoCourseWrite('publishCourse', { courseId, isPublished }); return; }
     try {
       const courseRef = doc(db, COLLECTIONS.COURSES, courseId);
       const updateData: Record<string, unknown> = {
@@ -521,6 +523,7 @@ export class CourseService {
    * Get courses by instructor
    */
   static async getCoursesByInstructor(instructorId: string): Promise<Course[]> {
+    if (mongoProvider.enabled()) return mongoProvider.getCourses({ instructorId });
     try {
       const q = query(
         collection(db, COLLECTIONS.COURSES),
@@ -547,6 +550,9 @@ export class CourseService {
    * Get featured courses
    */
   static async getFeaturedCourses(limitCount = 6): Promise<Course[]> {
+    if (mongoProvider.enabled()) {
+      return (await mongoProvider.getCourses({ isFeatured: true, isPublished: true })).slice(0, limitCount);
+    }
     try {
       const q = query(
         collection(db, COLLECTIONS.COURSES),
@@ -578,6 +584,17 @@ export class CourseService {
     searchTerm: string,
     limitCount = 20,
   ): Promise<Course[]> {
+    if (mongoProvider.enabled()) {
+      const term = searchTerm.toLowerCase();
+      return (await mongoProvider.getCourses({ isPublished: true }))
+        .filter((course) =>
+          course.title.toLowerCase().includes(term) ||
+          course.description.toLowerCase().includes(term) ||
+          course.instructor.toLowerCase().includes(term) ||
+          course.tags.some((tag) => tag.toLowerCase().includes(term))
+        )
+        .slice(0, limitCount);
+    }
     try {
       // Get all published courses first (Firestore limitation)
       const q = query(
@@ -626,6 +643,7 @@ export class CourseService {
     totalQuizzes: number;
   }> {
     try {
+      if (mongoProvider.enabled()) return mongoCourseWrite('getCourseStats', { courseId });
       // Get course details
       const course = await this.getCourse(courseId);
       if (!course) throw new Error("Course not found");
@@ -687,6 +705,7 @@ export class CourseService {
     newRating: number,
   ): Promise<void> {
     try {
+      if (mongoProvider.enabled()) { await mongoCourseWrite('updateCourseRating', { courseId, newRating }); return; }
       const courseRef = doc(db, COLLECTIONS.COURSES, courseId);
       const courseSnap = await getDoc(courseRef);
 
@@ -1039,6 +1058,7 @@ export class CourseService {
    */
   static async rebuildLessonsMetadata(courseId: string): Promise<void> {
     try {
+      if (mongoProvider.enabled()) { await mongoCourseWrite('rebuildLessonsMetadata', { courseId }); return; }
       const course = await this.getCourse(courseId);
       if (!course) throw new Error("Course not found");
 
@@ -1063,6 +1083,7 @@ export class CourseService {
    */
   static async rebuildQuizzesMetadata(courseId: string): Promise<void> {
     try {
+      if (mongoProvider.enabled()) { await mongoCourseWrite('rebuildQuizzesMetadata', { courseId }); return; }
       // Query all quizzes for this course
       const quizzesQuery = query(
         collection(db, COLLECTIONS.QUIZZES),
@@ -1144,6 +1165,7 @@ export class CourseService {
     updates: Partial<LessonMetadata>
   ): Promise<void> {
     try {
+      if (mongoProvider.enabled()) { await mongoCourseWrite('updateLessonMetadata', { courseId, lessonId, updates }); return; }
       const courseRef = doc(db, COLLECTIONS.COURSES, courseId);
       const courseSnap = await getDoc(courseRef);
       
@@ -1181,6 +1203,7 @@ export class CourseService {
     updates: Partial<QuizMetadata>
   ): Promise<void> {
     try {
+      if (mongoProvider.enabled()) { await mongoCourseWrite('updateQuizMetadata', { courseId, quizId, updates }); return; }
       const courseRef = doc(db, COLLECTIONS.COURSES, courseId);
       const courseSnap = await getDoc(courseRef);
       

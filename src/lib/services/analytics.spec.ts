@@ -29,6 +29,7 @@ const mockFirestore = {
 // Mock Firebase before importing service
 vi.mock('firebase/firestore', () => mockFirestore)
 vi.mock('$lib/firebase', () => ({ db: 'mock-db-instance' }))
+vi.mock('./mongo-provider', () => ({ mongoProvider: { enabled: () => false }, getMongoAnalytics: vi.fn() }))
 
 // Now import the service after mocks are set up
 const { AnalyticsService } = await import('$lib/services/analytics')

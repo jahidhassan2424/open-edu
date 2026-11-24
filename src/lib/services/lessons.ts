@@ -22,7 +22,7 @@ import { convertTimestamps } from "$lib/utils/firestore"
 import { lessonDocumentSchema } from "$lib/firebase/schemas"
 import type { Lesson, LessonMetadata } from "$lib/types/lesson"
 import { buildLessonMetadata } from "$lib/types/lesson"
-import { mongoProvider } from './mongo-provider'
+import { mongoProvider, mongoCourseWrite } from './mongo-provider'
 
 /**
  * Lesson Service - v1.6.0 Architecture
@@ -41,6 +41,7 @@ export class LessonService {
    * Get a single lesson by ID from the lessons collection
    */
   static async getLesson(lessonId: string): Promise<Lesson | null> {
+    if (mongoProvider.enabled()) return mongoCourseWrite('getLesson', { id: lessonId })
     try {
       const lessonRef = doc(db, COLLECTIONS.LESSONS, lessonId)
       const lessonSnap = await getDoc(lessonRef)
@@ -94,6 +95,7 @@ export class LessonService {
   static async createLesson(
     lessonData: Omit<Lesson, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<string> {
+    if (mongoProvider.enabled()) return mongoCourseWrite('saveLesson', { ...lessonData, id: `lesson-${Date.now()}` })
     try {
       const batch = writeBatch(db)
 
@@ -147,6 +149,7 @@ export class LessonService {
     lessonId: string,
     updates: Partial<Omit<Lesson, 'id' | 'courseId' | 'createdAt'>>
   ): Promise<void> {
+    if (mongoProvider.enabled()) return mongoCourseWrite('saveLesson', { ...updates, id: lessonId })
     try {
       // Get current lesson to access courseId
       const currentLesson = await this.getLesson(lessonId)
@@ -190,6 +193,7 @@ export class LessonService {
    * Also removes metadata from course and decrements count
    */
   static async deleteLesson(lessonId: string): Promise<void> {
+    if (mongoProvider.enabled()) return mongoCourseWrite('deleteLesson', { id: lessonId })
     try {
       // Get lesson to access courseId and metadata
       const lesson = await this.getLesson(lessonId)
@@ -232,6 +236,7 @@ export class LessonService {
     courseId: string,
     lessons: Array<{ id: string; order: number; title: string; description?: string; duration?: number; isRequired: boolean; videoUrl?: string | null; quiz?: unknown }>
   ): Promise<void> {
+    if (mongoProvider.enabled()) return mongoCourseWrite('batchUpdateLessons', { courseId, lessons })
     try {
       const batch = writeBatch(db)
 
@@ -331,6 +336,7 @@ export class LessonService {
    * Get lesson count for a course (from course metadata)
    */
   static async getLessonCount(courseId: string): Promise<number> {
+    if (mongoProvider.enabled()) return (await mongoProvider.getCourse(courseId))?.totalLessons ?? 0
     try {
       const courseRef = doc(db, COLLECTIONS.COURSES, courseId)
       const courseSnap = await getDoc(courseRef)
@@ -352,6 +358,7 @@ export class LessonService {
    * For course overview pages
    */
   static async getLessonsMetadata(courseId: string): Promise<LessonMetadata[]> {
+    if (mongoProvider.enabled()) return (await mongoProvider.getCourse(courseId))?.lessonsMetadata ?? []
     try {
       const courseRef = doc(db, COLLECTIONS.COURSES, courseId)
       const courseSnap = await getDoc(courseRef)

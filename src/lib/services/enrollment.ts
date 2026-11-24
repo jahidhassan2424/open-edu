@@ -87,6 +87,7 @@ export class EnrollmentService {
    * Unenroll a user from a course
    */
   static async unenrollUser(userId: string, courseId: string): Promise<void> {
+    if (mongoProvider.enabled()) return mongoProvider.unenroll(courseId)
     try {
       const enrollment = await this.getEnrollment(userId, courseId);
       if (!enrollment) {
@@ -152,6 +153,7 @@ export class EnrollmentService {
    * Get all enrollments for a user
    */
   static async getUserEnrollments(userId: string): Promise<Enrollment[]> {
+    if (mongoProvider.enabled()) return mongoProvider.getUserEnrollments()
     try {
       const q = query(
         collection(db, COLLECTIONS.ENROLLMENTS),
@@ -179,6 +181,7 @@ export class EnrollmentService {
    * Get all enrollments for a course
    */
   static async getCourseEnrollments(courseId: string): Promise<Enrollment[]> {
+    if (mongoProvider.enabled()) return mongoProvider.getCourseEnrollments(courseId)
     try {
       const q = query(
         collection(db, COLLECTIONS.ENROLLMENTS),
@@ -222,6 +225,7 @@ export class EnrollmentService {
    * Mark course as completed for a user
    */
   static async completeCourse(userId: string, courseId: string): Promise<void> {
+    if (mongoProvider.enabled()) return mongoProvider.completeCourse(courseId)
     try {
       const enrollment = await this.getEnrollment(userId, courseId);
       if (!enrollment) {
@@ -321,6 +325,7 @@ export class EnrollmentService {
     dropRate: number;
     completionRate: number;
   }> {
+    if (mongoProvider.enabled()) return mongoProvider.getEnrollmentStats(courseId)
     try {
       const q = query(
         collection(db, COLLECTIONS.ENROLLMENTS),
@@ -382,6 +387,7 @@ export class EnrollmentService {
     courseId: string,
     certificateUrl: string,
   ): Promise<void> {
+    if (mongoProvider.enabled()) return mongoProvider.issueCertificate(courseId, certificateUrl)
     try {
       const enrollment = await this.getEnrollment(userId, courseId);
       if (!enrollment) {

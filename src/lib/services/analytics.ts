@@ -28,6 +28,7 @@ import type { Course, UserProgress, User } from '$lib/types'
 import type { LessonMetadata } from '$lib/types/lesson'
 import { hasToDate } from '$lib/utils/firestore'
 import { LessonService } from '$lib/services/lessons'
+import { mongoProvider, getMongoAnalytics } from '$lib/services/mongo-provider'
 
 // Helper to convert Firestore timestamps
 function convertTimestamp(timestamp: unknown): string {
@@ -92,6 +93,7 @@ export class AnalyticsService {
 		lessonId: string,
 		_filters?: AnalyticsFilters
 	): Promise<LessonAnalytics> {
+		if (mongoProvider.enabled()) return getMongoAnalytics(courseId, lessonId, _filters) as Promise<LessonAnalytics>
 		try {
 			// Get course to get lesson details
 			const courseDoc = await getDoc(doc(db, COLLECTIONS.COURSES, courseId))
@@ -246,6 +248,7 @@ export class AnalyticsService {
 		courseId: string,
 		_filters?: AnalyticsFilters
 	): Promise<CourseAnalytics> {
+		if (mongoProvider.enabled()) return getMongoAnalytics(courseId, undefined, _filters) as Promise<CourseAnalytics>
 		try {
 			// Get course details
 			const courseDoc = await getDoc(doc(db, COLLECTIONS.COURSES, courseId))
@@ -427,6 +430,7 @@ export class AnalyticsService {
 		courseId: string,
 		_filters?: AnalyticsFilters
 	): Promise<StudentEngagementSummary[]> {
+		if (mongoProvider.enabled()) return getMongoAnalytics(courseId, 'students', _filters) as Promise<StudentEngagementSummary[]>
 		try {
 			// Get course
 			const courseDoc = await getDoc(doc(db, COLLECTIONS.COURSES, courseId))

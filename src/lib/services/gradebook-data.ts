@@ -4,8 +4,8 @@ import { db, functions } from '$lib/firebase'
 import { COLLECTIONS } from '$lib/firebase/collections'
 import type { CourseGradeConfig, FinalResult } from '$lib/types/gradebook'
 import { mongoProvider, getMongoGradebook } from './mongo-provider'
-export async function getGradeConfig(courseId: string) { const snap = await getDoc(doc(db, COLLECTIONS.GRADE_CONFIGS, courseId)); return snap.exists() ? snap.data() as CourseGradeConfig : null }
-export async function saveGradeConfig(config: CourseGradeConfig) { await setDoc(doc(db, COLLECTIONS.GRADE_CONFIGS, config.courseId), config) }
-export async function getFinalResult(courseId: string, userId: string) { const snap = await getDoc(doc(db, COLLECTIONS.FINAL_RESULTS, `${userId}_${courseId}`)); return snap.exists() ? snap.data() as FinalResult : null }
+export async function getGradeConfig(courseId: string) { if (mongoProvider.enabled()) return mongoProvider.getGradeConfig(courseId); const snap = await getDoc(doc(db, COLLECTIONS.GRADE_CONFIGS, courseId)); return snap.exists() ? snap.data() as CourseGradeConfig : null }
+export async function saveGradeConfig(config: CourseGradeConfig) { if (mongoProvider.enabled()) return mongoProvider.saveGradeConfig(config); await setDoc(doc(db, COLLECTIONS.GRADE_CONFIGS, config.courseId), config) }
+export async function getFinalResult(courseId: string, userId: string) { if (mongoProvider.enabled()) return mongoProvider.getFinalResult(courseId, userId); const snap = await getDoc(doc(db, COLLECTIONS.FINAL_RESULTS, `${userId}_${courseId}`)); return snap.exists() ? snap.data() as FinalResult : null }
 export const getLearnerGradebook = (data: { courseId: string }) => mongoProvider.enabled() ? getMongoGradebook(data.courseId) : httpsCallable<{ courseId: string }, { entries: unknown[]; average: number; pending: number; finalResult?: FinalResult }>(functions, 'getLearnerGradebook')(data)
-export const finalizeLearnerGradebook = httpsCallable<{ courseId: string; userId: string }, { result: FinalResult }>(functions, 'finalizeLearnerGradebook')
+export const finalizeLearnerGradebook = (data: { courseId: string; userId: string }) => mongoProvider.enabled() ? mongoProvider.finalizeGradebook(data.courseId, data.userId) : httpsCallable<{ courseId: string; userId: string }, { result: FinalResult }>(functions, 'finalizeLearnerGradebook')(data)

@@ -31,6 +31,7 @@ import type {
 import type { Lesson } from '$lib/types'
 import type { QuizMetadata } from '$lib/types/lesson'
 import { buildQuizMetadata } from '$lib/types/lesson'
+import { mongoProvider } from './mongo-provider'
 
 // ============================================
 // Quiz CRUD Operations
@@ -41,6 +42,7 @@ import { buildQuizMetadata } from '$lib/types/lesson'
  * v1.6.0: Uses batch write to atomically create quiz and update course metadata
  */
 export async function createQuiz(quizData: Omit<Quiz, 'id' | 'createdAt' | 'updatedAt'>): Promise<Quiz> {
+	if (mongoProvider.enabled()) return mongoProvider.createQuiz(quizData)
 	const batch = writeBatch(db)
 	
 	// Create the quiz document
@@ -111,6 +113,7 @@ export async function createQuizWithLesson(
 	},
 	quizData: Omit<Quiz, 'id' | 'createdAt' | 'updatedAt' | 'lessonId' | 'courseId'>
 ): Promise<{ quiz: Quiz; lesson: Lesson }> {
+	if (mongoProvider.enabled()) return mongoProvider.createQuizWithLesson(courseId, lessonData, quizData)
 	const batch = writeBatch(db)
 	
 	// Get the course to determine the next lesson order
@@ -205,6 +208,7 @@ export async function createQuizWithLesson(
  * Get quiz by ID
  */
 export async function getQuiz(quizId: string): Promise<Quiz | null> {
+	if (mongoProvider.enabled()) return mongoProvider.getManagedQuiz(quizId)
 	const quizRef = doc(db, COLLECTIONS.QUIZZES, quizId)
 	const quizSnap = await getDoc(quizRef)
 	
@@ -222,6 +226,7 @@ export async function getQuiz(quizId: string): Promise<Quiz | null> {
  * Get all quizzes for a lesson
  */
 export async function getQuizzesByLesson(lessonId: string): Promise<Quiz[]> {
+	if (mongoProvider.enabled()) return mongoProvider.getQuizzesByLesson(lessonId)
 	const quizzesRef = collection(db, COLLECTIONS.QUIZZES)
 	const q = query(
 		quizzesRef,
@@ -240,6 +245,7 @@ export async function getQuizzesByLesson(lessonId: string): Promise<Quiz[]> {
  * Get all quizzes for a course
  */
 export async function getQuizzesByCourse(courseId: string): Promise<Quiz[]> {
+	if (mongoProvider.enabled()) return mongoProvider.getManagedQuizzes(courseId)
 	const quizzesRef = collection(db, COLLECTIONS.QUIZZES)
 	const q = query(
 		quizzesRef,
@@ -259,6 +265,7 @@ export async function getQuizzesByCourse(courseId: string): Promise<Quiz[]> {
  * v1.6.0: Syncs metadata changes to course document if relevant fields changed
  */
 export async function updateQuiz(quizId: string, updates: Partial<Quiz>): Promise<void> {
+	if (mongoProvider.enabled()) return mongoProvider.updateQuiz(quizId, updates)
 	const quizRef = doc(db, COLLECTIONS.QUIZZES, quizId)
 	
 	// Check if we need to update course metadata
@@ -337,6 +344,7 @@ export async function updateQuiz(quizId: string, updates: Partial<Quiz>): Promis
  * v1.6.0: Also removes quiz metadata from course document and decrements count
  */
 export async function deleteQuiz(quizId: string): Promise<void> {
+	if (mongoProvider.enabled()) return mongoProvider.deleteQuiz(quizId)
 	const quizRef = doc(db, COLLECTIONS.QUIZZES, quizId)
 	
 	// Get the quiz to find courseId
@@ -389,6 +397,7 @@ export async function deleteQuiz(quizId: string): Promise<void> {
  * Publish/unpublish quiz
  */
 export async function publishQuiz(quizId: string, isPublished: boolean): Promise<void> {
+	if (mongoProvider.enabled()) return mongoProvider.publishQuiz(quizId, isPublished)
 	const quizRef = doc(db, COLLECTIONS.QUIZZES, quizId)
 	
 	await updateDoc(quizRef, {
@@ -411,6 +420,7 @@ export async function startQuizAttempt(
 	courseId: string,
 	lessonId: string
 ): Promise<QuizAttempt> {
+	if (mongoProvider.enabled()) return mongoProvider.startQuiz(quizId) as Promise<QuizAttempt>
 	// Get quiz details
 	const quiz = await getQuiz(quizId)
 	if (!quiz) {
@@ -466,6 +476,7 @@ export async function saveQuizAnswer(
 	attemptId: string,
 	answer: QuizAnswer
 ): Promise<void> {
+	if (mongoProvider.enabled()) return mongoProvider.saveQuizAnswer(attemptId, answer)
 	const attemptRef = doc(db, COLLECTIONS.QUIZ_ATTEMPTS, attemptId)
 	const attemptSnap = await getDoc(attemptRef)
 	
@@ -505,6 +516,11 @@ export async function submitQuizAttempt(
 	attemptId: string,
 	timeSpent: number
 ): Promise<QuizAttempt> {
+	if (mongoProvider.enabled()) {
+		const attempt = await mongoProvider.getQuizAttempt(attemptId)
+		if (!attempt) throw new Error('Attempt not found')
+		return mongoProvider.submitQuiz(attemptId, attempt.answers, timeSpent) as Promise<QuizAttempt>
+	}
 	const attemptRef = doc(db, COLLECTIONS.QUIZ_ATTEMPTS, attemptId)
 	const attemptSnap = await getDoc(attemptRef)
 	
@@ -686,6 +702,7 @@ export async function getUserQuizAttempts(
 	userId: string,
 	quizId: string
 ): Promise<QuizAttempt[]> {
+	if (mongoProvider.enabled()) return mongoProvider.getMyQuizAttempts(quizId)
 	const attemptsRef = collection(db, COLLECTIONS.QUIZ_ATTEMPTS)
 	const q = query(
 		attemptsRef,
@@ -724,6 +741,7 @@ export async function getUserBestAttempt(
  * Get attempt by ID
  */
 export async function getQuizAttempt(attemptId: string): Promise<QuizAttempt | null> {
+	if (mongoProvider.enabled()) return mongoProvider.getQuizAttempt(attemptId)
 	const attemptRef = doc(db, COLLECTIONS.QUIZ_ATTEMPTS, attemptId)
 	const attemptSnap = await getDoc(attemptRef)
 	
@@ -745,6 +763,7 @@ export async function getQuizAttempt(attemptId: string): Promise<QuizAttempt | n
  * Get statistics for a quiz
  */
 export async function getQuizStatistics(quizId: string): Promise<QuizStatistics> {
+	if (mongoProvider.enabled()) return mongoProvider.getQuizStatistics(quizId)
 	const attemptsRef = collection(db, COLLECTIONS.QUIZ_ATTEMPTS)
 	const q = query(
 		attemptsRef,
@@ -811,6 +830,7 @@ export async function getQuizStatistics(quizId: string): Promise<QuizStatistics>
  * Get all attempts for a course (for instructor analytics)
  */
 export async function getCourseQuizAttempts(courseId: string): Promise<QuizAttempt[]> {
+	if (mongoProvider.enabled()) return mongoProvider.getCourseQuizAttempts(courseId)
 	const attemptsRef = collection(db, COLLECTIONS.QUIZ_ATTEMPTS)
 	const q = query(
 		attemptsRef,
@@ -837,6 +857,7 @@ export async function batchUpdateQuizzes(
 	courseId: string,
 	quizzes: Array<{ id: string; order: number; lessonId: string; title: string; questions: Quiz['questions']; passingScore: number; timeLimit?: number }>
 ): Promise<void> {
+	if (mongoProvider.enabled()) return mongoProvider.batchUpdateQuizzes(courseId, quizzes)
 	const batch = writeBatch(db)
 	
 	// Update each quiz document's order

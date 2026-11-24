@@ -4,6 +4,7 @@ import { getDocs, setDoc, deleteDoc } from 'firebase/firestore'
 
 vi.mock('firebase/firestore', () => ({ collection: vi.fn((...args) => args), doc: vi.fn((...args) => ({ id: args.length > 2 ? args[2] : 'generated-term' })), getDocs: vi.fn(), orderBy: vi.fn(), query: vi.fn(), setDoc: vi.fn(), deleteDoc: vi.fn() }))
 vi.mock('$lib/firebase', () => ({ db: {} }))
+vi.mock('./mongo-provider', () => ({ mongoProvider: { enabled: () => false } }))
 
 describe('academic validation', () => {
   it('rejects duplicate modules, reversed dates, unknown resources, and late deadlines', () => {
