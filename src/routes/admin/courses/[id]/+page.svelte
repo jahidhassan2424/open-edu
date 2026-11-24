@@ -4,7 +4,7 @@
 	import { CourseService } from '$lib/services/courses'
 	import { LessonService } from '$lib/services/lessons'
 	import { authState } from '$lib/auth.svelte'
-	import { canManageCourses } from '$lib/utils/admin'
+	import { canManageCourse } from '$lib/utils/admin'
 	import { Button, Input, Textarea, Checkbox, Label } from '$lib/components/ui'
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui'
 	import * as Select from '$lib/components/ui/select'
@@ -13,7 +13,7 @@
 	import DynamicBreadcrumb from '$lib/components/DynamicBreadcrumb.svelte'
 	import type { Course, Lesson } from '$lib/types'
 	
-	const courseId = $derived(page.params.id as string)
+	const courseId = $derived((page.params.id ?? page.params.courseId) as string)
 	
 	// Course data
 	let course = $state<Course | null>(null)
@@ -76,8 +76,8 @@
 		
 		if (!authState.initialized) return
 		
-		if (!authState.user || !canManageCourses(authState.user)) {
-			navigate('/dashboard')
+		if (!authState.user) {
+			navigate('/auth/login')
 			return
 		}
 		
@@ -93,6 +93,10 @@
 		
 		if (!courseData) {
 			error = 'Course not found'
+			return
+		}
+		if (!canManageCourse(courseData.instructorId, authState.user)) {
+			error = 'You do not have permission to manage this course'
 			return
 		}
 		
@@ -712,7 +716,7 @@
 										</svg>
 										View Analytics
 									</Button>
-									
+
 									<Button
 										variant="outline"
 										class="w-full justify-start"
@@ -724,6 +728,22 @@
 										Manage Quizzes
 									</Button>
 									
+									<Button
+										variant="outline"
+										class="w-full justify-start"
+										onclick={() => navigate(`/admin/courses/${courseId}/assignments`)}
+									>
+										Manage Assignments
+									</Button>
+
+									<Button
+										variant="outline"
+										class="w-full justify-start"
+										onclick={() => navigate(`/admin/courses/${courseId}/modules`)}
+									>
+										Manage Modules
+									</Button>
+
 									<Button
 										variant="outline"
 										class="w-full justify-start"

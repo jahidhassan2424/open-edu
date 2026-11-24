@@ -7,12 +7,13 @@
 	import { goto } from '$app/navigation'
 	import { navigate } from '$lib/utils/navigation'
 	import { browser } from '$app/environment'
-	import { Search, Users, Clock, Star } from 'lucide-svelte'
+	import { Search, Users, Clock, Star, Plus, Upload } from 'lucide-svelte'
 	import * as m from '$lib/paraglide/messages'
 	
 	import { Button, Input, Card, CardContent, CardFooter, CardHeader } from '$lib/components/ui'
 	
 	import { CourseService } from '$lib/services/courses'
+	import { authState } from '$lib/auth.svelte'
 	import type { Course } from '$lib/types'
 	import type { CourseFilter, CourseSort, Pagination } from '$lib/validation/course'
 
@@ -22,6 +23,10 @@
 	let error = $state<string | null>(null)
 	// State tracking
 	let isInitialized = $state(false)
+	let myCourses = $state<Course[]>([])
+	let myCoursesLoading = $state(false)
+	let myCoursesError = $state<string | null>(null)
+	let loadedOwnerId = $state<string | null>(null)
 	
 	// Search and filter state
 	let searchInput = $state('') // For the input field
@@ -199,6 +204,29 @@
 			loading = false
 		}
 	}
+
+	async function loadMyCourses(ownerId: string) {
+		myCoursesLoading = true
+		myCoursesError = null
+		try {
+			myCourses = await CourseService.getCoursesByInstructor(ownerId)
+		} catch (err) {
+			myCoursesError = err instanceof Error ? err.message : 'Failed to load your courses'
+		} finally {
+			loadedOwnerId = ownerId
+			myCoursesLoading = false
+		}
+	}
+
+	$effect(() => {
+		if (!authState.initialized) return
+		if (!authState.user) {
+			myCourses = []
+			loadedOwnerId = null
+			return
+		}
+		if (loadedOwnerId !== authState.user.id && !myCoursesLoading) loadMyCourses(authState.user.id)
+	})
 	
 	// Clear all filters
 	function clearFilters() {
@@ -445,6 +473,48 @@
 			{m.courses_subtitle()}
 		</p>
 	</header>
+
+	{#if authState.user}
+		<section class="mb-10 rounded-xl border bg-card p-6" aria-labelledby="my-courses-title">
+			<div class="flex flex-wrap items-center justify-between gap-4">
+				<div>
+					<h2 id="my-courses-title" class="text-2xl font-semibold">My Courses</h2>
+					<p class="text-muted-foreground">Create, import, and manage courses you own.</p>
+				</div>
+				<div class="flex flex-wrap gap-2">
+					<Button variant="outline" onclick={() => navigate('/courses/new?mode=import')}>
+						<Upload class="mr-2 h-4 w-4" />
+						Import Course
+					</Button>
+					<Button onclick={() => navigate('/courses/new')}>
+						<Plus class="mr-2 h-4 w-4" />
+						Create Course
+					</Button>
+				</div>
+			</div>
+
+			{#if myCoursesLoading}
+				<p class="mt-5 text-sm text-muted-foreground">Loading your courses...</p>
+			{:else if myCoursesError}
+				<p class="mt-5 text-sm text-destructive" role="alert">{myCoursesError}</p>
+			{:else if myCourses.length === 0}
+				<div class="mt-5 rounded-lg bg-muted/50 p-5">
+					<p class="font-medium">No courses yet</p>
+					<p class="mt-1 text-sm text-muted-foreground">Start with a file you already have, or create a course from scratch.</p>
+					<Button class="mt-4" onclick={() => navigate('/courses/new?mode=import')}>Import Your First Course</Button>
+				</div>
+			{:else}
+				<ul class="mt-5 grid gap-3 sm:grid-cols-2" aria-label="Your courses">
+					{#each myCourses as course (course.id)}
+						<li class="flex items-center justify-between gap-3 rounded-lg border p-4">
+							<div class="min-w-0"><p class="truncate font-medium">{course.title}</p><p class="text-sm text-muted-foreground">{course.isPublished ? 'Published' : 'Draft'}</p></div>
+							<Button size="sm" variant="outline" onclick={() => navigate(`/courses/${course.id}/edit`)}>Manage</Button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
+	{/if}
 
 	<!-- Search and Filters Section -->
 	<section aria-label="Course search and filters" class="mb-8 space-y-4">
@@ -781,9 +851,15 @@
 					<p class="text-muted-foreground mb-4">
 						{m.courses_results_noResultsDesc()}
 					</p>
-					<Button variant="outline" onclick={clearFilters} class="interactive rounded-lg">
-						{m.courses_filter_clearAll()}
-					</Button>
+					{#if authState.user}
+						<Button onclick={() => navigate('/courses/new?mode=import')} class="interactive rounded-lg">
+							Import Your First Course
+						</Button>
+					{:else}
+						<Button variant="outline" onclick={clearFilters} class="interactive rounded-lg">
+							{m.courses_filter_clearAll()}
+						</Button>
+					{/if}
 				</div>
 			</section>
 		{/if}

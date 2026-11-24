@@ -45,8 +45,8 @@
 				authState.user.displayName || authState.user.email
 			)
 
-			// Success! Navigate to course
-			navigate(`/courses/${courseId}`)
+			// Imported courses open in their owner's editor.
+			navigate(`/courses/${courseId}/edit`)
 	} catch (err: unknown) {
 		error = err instanceof Error ? err.message : 'Failed to import course'
 		console.error('Import error:', err)
