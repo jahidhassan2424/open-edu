@@ -40,12 +40,23 @@ function safeAsset(root, pathname) {
   return file === root || file.startsWith(`${root}${sep}`) ? file : null
 }
 
-/** @param {{ root?: string, basePath?: string, mongoHandler?: (request: any, response: any) => unknown, reminderHandler?: (request: any, response: any) => unknown }} options */
-export function createOpenEduServer({ root = resolve('build'), basePath = process.env.PUBLIC_BASE_PATH ?? '', mongoHandler, reminderHandler } = {}) {
+/** @param {{ root?: string, basePath?: string, mongoHandler?: (request: any, response: any) => unknown, reminderHandler?: (request: any, response: any) => unknown, isReady?: () => boolean }} options */
+export function createOpenEduServer({ root = resolve('build'), basePath = process.env.PUBLIC_BASE_PATH ?? '', mongoHandler, reminderHandler, isReady = () => true } = {}) {
   if (!mongoHandler) throw new Error('mongoHandler is required')
   return createHttpServer(async (request, response) => {
     const forwardedPrefix = request.headers['x-forwarded-prefix']
     const path = applicationPath(request.url ?? '/', { basePath, forwardedPrefix: typeof forwardedPrefix === 'string' ? forwardedPrefix : '' })
+    if (path === '/api/health') {
+      if (request.method !== 'GET') { response.statusCode = 405; response.end('Method not allowed.'); return }
+      const timestamp = new Date().toISOString()
+      try {
+        if (!isReady()) { response.statusCode = 503; response.setHeader('content-type', 'application/json'); response.end(JSON.stringify({ status: 'unavailable', service: 'open-edu', timestamp })); return }
+      } catch { response.statusCode = 503; response.setHeader('content-type', 'application/json'); response.end(JSON.stringify({ status: 'unavailable', service: 'open-edu', timestamp })); return }
+      response.statusCode = 200
+      response.setHeader('content-type', 'application/json')
+      response.end(JSON.stringify({ status: 'ok', service: 'open-edu', timestamp }))
+      return
+    }
     if (path === '/api/mongo' || path === '/api/reminders') {
       const handler = path === '/api/mongo' ? mongoHandler : reminderHandler
       if (!handler) { response.statusCode = 404; response.end('API endpoint is not configured.'); return }
