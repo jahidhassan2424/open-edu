@@ -12,6 +12,7 @@ export interface Quiz {
 	lessonId: string // Required - quizzes must belong to a lesson
 	courseId: string // Required - quizzes must belong to a course
 	title: string
+	dueAt?: string // Optional deadline used by reminders and course schedules
 	description?: string
 	instructions?: string
 	questions: QuizQuestion[]

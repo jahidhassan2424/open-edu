@@ -7,6 +7,11 @@
     "api/mongo.mjs": {
       "includeFiles": "{netlify/functions/**,functions/lib/**}",
       "maxDuration": 30
+    },
+    "api/reminders.mjs": {
+      "includeFiles": "{netlify/functions/**,functions/lib/**}",
+      "maxDuration": 30
     }
-  }
+  },
+  "crons": [{ "path": "/api/reminders", "schedule": "0 * * * *" }]
 }
