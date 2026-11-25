@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { parseCourseFile, generateCourseTemplate, downloadTemplate, parseDurationToMinutes } from './course-import'
+import { copyAiCourseJsonPrompt, generateAiCourseJsonPrompt, parseCourseFile, generateCourseTemplate, downloadTemplate, parseDurationToMinutes } from './course-import'
+import { courseImportSchema } from '$lib/validation/course-import'
 
 describe('Course Import Utils', () => {
 	describe('parseCourseFile', () => {
@@ -358,6 +359,30 @@ invalid: yaml: structure: here
 			// Should parse without errors
 			const result = await parseCourseFile(file)
 			expect(result.data.title).toBe('Course Title')
+		})
+	})
+
+	describe('AI JSON format rule', () => {
+		it('documents the accepted schema and ends with a valid import example', () => {
+			const prompt = generateAiCourseJsonPrompt()
+			expect(prompt).toContain('"Beginner", "Intermediate", or "Advanced"')
+			expect(prompt).toContain('modules: array')
+			expect(prompt).toContain('assignments: array')
+			expect(prompt).toContain('gradingCategories: array')
+			expect(prompt).toContain('schedule: array')
+			expect(prompt).toContain('multiple-choice')
+			expect(prompt).toContain('short-answer')
+			expect(prompt).toContain('Return JSON only: no Markdown fences, no prose')
+
+			const example = JSON.parse(prompt.split('Valid import example:\n')[1])
+			expect(courseImportSchema.safeParse(example).success).toBe(true)
+		})
+
+		it('copies the generated rule and reports an unavailable clipboard', async () => {
+			const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) }
+			await copyAiCourseJsonPrompt(clipboard)
+			expect(clipboard.writeText).toHaveBeenCalledWith(generateAiCourseJsonPrompt())
+			await expect(copyAiCourseJsonPrompt(undefined)).rejects.toThrow('Clipboard is not available.')
 		})
 	})
 

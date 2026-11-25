@@ -5,6 +5,7 @@
 	import { EnrollmentService } from '$lib/services/enrollment'
 	import { ProgressService } from '$lib/services/progress'
 	import { CourseService } from '$lib/services/courses'
+	import { mongoProvider } from '$lib/services/mongo-provider'
 	import { BookOpen, User, Clock, Award, CheckCircle } from 'lucide-svelte'
 	import { getPath, navigate } from '$lib/utils/navigation'
 	import { getErrorMessage } from '$lib/utils/errors'
@@ -26,6 +27,7 @@
 	let error = $state<string | null>(null)
 	let enrollments = $state<EnrollmentWithCourse[]>([])
 	let progressData = $state<UserProgress[]>([])
+	let upcomingWork = $state<{ id: string; type: string; title: string; courseTitle: string; dueAt: string; link: string }[]>([])
 	let userStats = $state({
 		totalCourses: 0,
 		completedCourses: 0,
@@ -54,6 +56,7 @@
 		try {
 			loading = true
 			error = null
+			upcomingWork = mongoProvider.enabled() ? await mongoProvider.getUpcomingWork() : []
 
 			// Load user enrollments
 			const userEnrollments = await EnrollmentService.getUserEnrollments(authState.user.id)
@@ -226,6 +229,10 @@
 					</CardContent>
 				</Card>
 			</div>
+
+			{#if upcomingWork.length > 0}
+				<Card class="card mb-6"><CardHeader><CardTitle>Upcoming Work</CardTitle><CardDescription>Deadlines from your courses</CardDescription></CardHeader><CardContent><div class="space-y-3">{#each upcomingWork as item (item.type + item.id)}<a class="flex items-center justify-between rounded-lg border p-3 hover:bg-muted" href={item.link}><div><p class="font-medium">{item.title}</p><p class="text-xs text-muted-foreground">{item.courseTitle} · {item.type}</p></div><time class="text-sm">{new Date(item.dueAt).toLocaleString()}</time></a>{/each}</div></CardContent></Card>
+			{/if}
 
 			<!-- Course Overview -->
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

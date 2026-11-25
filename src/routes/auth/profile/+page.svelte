@@ -3,6 +3,7 @@
 	import { authState, updateUserProfile, logout } from '$lib/auth.svelte'
 	import { navigate } from '$lib/utils/navigation'
 	import { getErrorMessage } from '$lib/utils/errors'
+	import { mongoProvider } from '$lib/services/mongo-provider'
 	import { User, Mail, Calendar, Save, LogOut, Pencil } from 'lucide-svelte'
 	
 	let displayName = $state('')
@@ -11,6 +12,7 @@
 	let loading = $state(false)
 	let error = $state<string | null>(null)
 	let success = $state<string | null>(null)
+	let reminders = $state({ reminderAssignments: true, reminderQuizzes: true, reminderOverdue: true, timezone: 'UTC' })
 
 	// Initialize form data when user is loaded
 	$effect(() => {
@@ -19,6 +21,16 @@
 			email = authState.user.email
 		}
 	})
+
+	$effect(() => {
+		if (authState.user && mongoProvider.enabled()) mongoProvider.getReminderPreferences().then(value => { reminders = { ...reminders, ...value } }).catch(() => {})
+	})
+
+	async function saveReminders() {
+		if (!mongoProvider.enabled()) return
+		await mongoProvider.saveReminderPreferences(reminders)
+		success = 'Reminder settings saved.'
+	}
 
 	// Redirect if not logged in
 	$effect(() => {
@@ -222,6 +234,11 @@
 						</div>
 					{/if}
 				</CardContent>
+			</Card>
+
+			<Card>
+				<CardHeader><CardTitle>Reminder Settings</CardTitle><CardDescription>Choose which academic reminders you receive.</CardDescription></CardHeader>
+				<CardContent><div class="space-y-3"><label class="flex gap-2"><input type="checkbox" bind:checked={reminders.reminderAssignments} /> Assignment reminders</label><label class="flex gap-2"><input type="checkbox" bind:checked={reminders.reminderQuizzes} /> Quiz reminders</label><label class="flex gap-2"><input type="checkbox" bind:checked={reminders.reminderOverdue} /> Overdue reminders</label><label class="block text-sm">Timezone<select class="ml-2 rounded border p-1" bind:value={reminders.timezone}><option>UTC</option><option>America/Halifax</option><option>America/New_York</option><option>America/Los_Angeles</option><option>Europe/London</option></select></label><Button onclick={saveReminders}>Save Reminder Settings</Button></div></CardContent>
 			</Card>
 
 			<!-- Account Actions -->

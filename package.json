@@ -6,6 +6,7 @@
     "main": "api/mongo.mjs",
     "scripts": {
         "dev": "vite dev --host 0.0.0.0",
+        "start": "node server.mjs",
         "build": "vite build",
         "preview": "vite preview",
         "prepare": "svelte-kit sync || echo ''",

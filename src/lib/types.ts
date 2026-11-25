@@ -30,6 +30,10 @@ export interface User {
     notifications: boolean;
     theme: "light" | "dark" | "system";
     language: string;
+    reminderAssignments?: boolean;
+    reminderQuizzes?: boolean;
+    reminderOverdue?: boolean;
+    timezone?: string;
   };
 }
 

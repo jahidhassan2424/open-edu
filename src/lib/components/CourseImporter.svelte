@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button, Input, Label } from '$lib/components/ui'
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui'
-	import { parseCourseFile, downloadTemplate, type ImportFormat } from '$lib/utils/course-import'
+	import { parseCourseFile, downloadTemplate, copyAiCourseJsonPrompt, type ImportFormat } from '$lib/utils/course-import'
 	import type { CourseImportData } from '$lib/validation/course-import'
 	import { CourseService } from '$lib/services/courses'
 	import { authState } from '$lib/auth.svelte'
@@ -12,6 +12,8 @@
 	let error = $state<string | null>(null)
 	let preview = $state<CourseImportData | null>(null)
 	let format = $state<ImportFormat | null>(null)
+	let copyStatus = $state<'idle' | 'copied' | 'failed'>('idle')
+	let copyStatusTimeout: ReturnType<typeof setTimeout> | undefined
 
 	async function handleFileSelect(e: Event) {
 		const input = e.target as HTMLInputElement
@@ -45,8 +47,8 @@
 				authState.user.displayName || authState.user.email
 			)
 
-			// Success! Navigate to course
-			navigate(`/courses/${courseId}`)
+			// Imported courses open in their owner's editor.
+			navigate(`/courses/${courseId}/edit`)
 	} catch (err: unknown) {
 		error = err instanceof Error ? err.message : 'Failed to import course'
 		console.error('Import error:', err)
@@ -57,6 +59,18 @@
 
 	function handleDownloadTemplate(templateFormat: ImportFormat) {
 		downloadTemplate(templateFormat)
+	}
+
+	async function handleCopyAiFormatRule() {
+		if (copyStatusTimeout) clearTimeout(copyStatusTimeout)
+		try {
+			await copyAiCourseJsonPrompt()
+			copyStatus = 'copied'
+		} catch (err) {
+			console.error('Failed to copy AI JSON format rule:', err)
+			copyStatus = 'failed'
+		}
+		copyStatusTimeout = setTimeout(() => { copyStatus = 'idle' }, 2000)
 	}
 
 	function clearFile() {
@@ -211,7 +225,7 @@
 					<p class="text-xs text-muted-foreground">Download a pre-filled example to get started</p>
 				</div>
 			</div>
-			<div class="flex gap-2">
+			<div class="flex flex-wrap gap-2">
 				<Button 
 					variant="outline" 
 					size="sm" 
@@ -234,7 +248,16 @@
 					</svg>
 					YAML Template
 				</Button>
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={handleCopyAiFormatRule}
+					class="flex-1"
+				>
+					{copyStatus === 'copied' ? 'Copied!' : copyStatus === 'failed' ? 'Copy failed' : 'Copy JSON Format Rule for AI'}
+				</Button>
 			</div>
+			<p class="sr-only" aria-live="polite">{copyStatus === 'copied' ? 'JSON format rule copied to clipboard.' : copyStatus === 'failed' ? 'Unable to copy JSON format rule.' : ''}</p>
 		</div>
 
 		<!-- Help Text -->

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { navigate } from '$lib/utils/navigation'
+	import { page } from '$app/state'
 	import { CourseService } from '$lib/services/courses'
 	import { authState } from '$lib/auth.svelte'
-	import { canManageCourses } from '$lib/utils/admin'
 	import { Button, Input, Textarea, Checkbox, Label } from '$lib/components/ui'
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui'
 	import * as Select from '$lib/components/ui/select'
@@ -13,7 +13,7 @@
 
 	// Mode selection
 	type CreationMode = 'manual' | 'import'
-	let mode = $state<CreationMode>('manual')
+	let mode = $state<CreationMode>(page.url.searchParams.get('mode') === 'import' ? 'import' : 'manual')
 
 	// Form state
 	const form = $state({
@@ -66,8 +66,8 @@
 	$effect(() => {
 		if (!authState.initialized) return
 		
-		if (!authState.user || !canManageCourses(authState.user)) {
-			navigate('/dashboard')
+		if (!authState.user) {
+			navigate('/auth/login')
 		}
 	})
 
@@ -112,9 +112,9 @@
 			
 			success = true
 
-			// Redirect to course detail page after a short delay
+			// Send owners directly to the editor after creating their course.
 			setTimeout(() => {
-				navigate(`/courses/${courseId}`)
+				navigate(`/courses/${courseId}/edit`)
 			}, 2000)
 
 		} catch (err: unknown) {
@@ -126,7 +126,7 @@
 	}
 
 	function handleCancel() {
-		navigate('/admin')
+		navigate('/courses')
 	}
 
 	function handleReset() {
@@ -148,7 +148,7 @@
 </script>
 
 <svelte:head>
-	<title>Create Course - Open-EDU Admin</title>
+	<title>Create Course - Open-EDU</title>
 	<meta name="description" content="Create a new course on Open-EDU" />
 </svelte:head>
 

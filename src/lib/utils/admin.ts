@@ -24,7 +24,8 @@ export function isInstructor(user?: User | null): boolean {
  * Check if user can manage courses (admin or instructor)
  */
 export function canManageCourses(user?: User | null): boolean {
-  return isInstructor(user);
+  const currentUser = user ?? authState.user;
+  return Boolean(currentUser);
 }
 
 /**
@@ -49,12 +50,8 @@ export function canManageCourse(
   // Admins can manage any course
   if (currentUser.role === "admin") return true;
 
-  // Instructors can only manage their own courses
-  if (currentUser.role === "instructor") {
-    return currentUser.id === courseInstructorId;
-  }
-
-  return false;
+  // Every authenticated user owns and may manage only their own courses.
+  return currentUser.id === courseInstructorId;
 }
 
 /**
