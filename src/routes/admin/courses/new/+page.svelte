@@ -157,7 +157,7 @@
 		<!-- Header -->
 		<div class="bg-card border-b border-border">
 			<div class="container mx-auto px-4 py-6">
-				<div class="flex items-center justify-between">
+				<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<div>
 						<h1 class="text-3xl font-bold">Create New Course</h1>
 						<p class="text-muted-foreground mt-1">
@@ -165,7 +165,7 @@
 						</p>
 					</div>
 					{#if mode === 'manual'}
-					<div class="flex gap-3">
+					<div class="flex flex-wrap gap-3">
 						<Button variant="outline" onclick={handleCancel}>
 							Cancel
 						</Button>
@@ -185,11 +185,11 @@
 		<div class="container mx-auto px-4 py-8">
 			<div class="max-w-4xl mx-auto">
 				<!-- Mode Tabs -->
-				<div class="flex gap-2 mb-6 p-1 bg-muted rounded-lg w-fit">
+				<div class="grid w-full grid-cols-2 gap-2 rounded-lg bg-muted p-1 sm:flex sm:w-fit">
 					<button
 						type="button"
 						onclick={() => mode = 'manual'}
-						class={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+						class={`px-3 py-2 text-sm font-medium rounded-md transition-all sm:px-6 ${
 							mode === 'manual'
 								? 'bg-card text-foreground shadow-sm'
 								: 'text-muted-foreground hover:text-foreground'
@@ -200,7 +200,7 @@
 					<button
 						type="button"
 						onclick={() => mode = 'import'}
-						class={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+						class={`px-3 py-2 text-sm font-medium rounded-md transition-all sm:px-6 ${
 							mode === 'import'
 								? 'bg-card text-foreground shadow-sm'
 								: 'text-muted-foreground hover:text-foreground'
@@ -449,8 +449,8 @@ Familiarity with command line"
 					<!-- Action Buttons -->
 					<Card>
 						<CardContent class="p-6">
-							<div class="flex items-center justify-between">
-								<div class="flex gap-3">
+							<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+								<div class="flex flex-wrap gap-3">
 									<Button variant="outline" onclick={handleCancel}>
 										Cancel
 									</Button>
@@ -461,7 +461,7 @@ Familiarity with command line"
 								<Button 
 									type="submit" 
 									disabled={!isValid || submitting}
-									class="px-8"
+									class="w-full px-8 sm:w-auto"
 								>
 									{submitting ? 'Creating Course...' : 'Create Course'}
 								</Button>
@@ -472,8 +472,8 @@ Familiarity with command line"
 
 				<!-- Success Message -->
 				{#if success}
-					<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-						<Card class="max-w-md w-full mx-4">
+					<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black bg-opacity-50 p-4">
+						<Card class="my-4 w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto">
 							<CardContent class="p-8 text-center">
 								<div class="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
 									<svg class="w-8 h-8 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">

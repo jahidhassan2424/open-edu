@@ -219,6 +219,7 @@
 	/* Navigation Items */
 	.nav-item {
 		display: flex;
+		min-width: 0;
 	}
 
 	.nav-previous {
@@ -242,6 +243,7 @@
 		border-radius: 0.5rem;
 		transition: all 0.2s;
 		max-width: 300px;
+		min-width: 0;
 	}
 
 	:global(.nav-button:hover:not(:disabled)) {

@@ -180,7 +180,7 @@
 	<!-- Bottom Sheet -->
 	<div
 		bind:this={sheetElement}
-		class="fixed left-0 right-0 bottom-0 bg-card dark:bg-gray-900 rounded-t-2xl shadow-2xl z-50 transition-transform duration-300 {open ? 'translate-y-0' : 'translate-y-full'}"
+		class="bottom-sheet-open fixed left-0 right-0 bottom-0 bg-card dark:bg-gray-900 rounded-t-2xl shadow-2xl z-50 transition-transform duration-300 {open ? 'translate-y-0' : 'translate-y-full'}"
 		style="transform: translateY({translateY}px); max-height: {currentSnapPoint}vh;"
 		role="dialog"
 		aria-modal="true"

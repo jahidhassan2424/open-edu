@@ -6,8 +6,9 @@
 	import { authState } from '$lib/auth.svelte'
 	import { canManageCourses } from '$lib/utils/admin'
 	import { Button } from '$lib/components/ui'
+	import { Badge } from '$lib/components/ui/badge'
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui'
-	import { User, Clock, Users, Star, Edit } from 'lucide-svelte'
+	import { User, Clock, Users, Star, Edit, BookOpen, Check, PlayCircle, CircleHelp, FileText, ClipboardCheck, CalendarDays } from 'lucide-svelte'
 	import type { Course, Enrollment, LessonMetadata } from '$lib/types'
 	import Loading from '$lib/components/Loading.svelte'
 	import DynamicBreadcrumb from '$lib/components/DynamicBreadcrumb.svelte'
@@ -18,6 +19,7 @@
 	let loading = $state(true)
 	let enrolling = $state(false)
 	let error = $state<string | null>(null)
+	let thumbnailFailed = $state(false)
 
 	// Derived states
 	const isEnrolled = $derived(enrollment !== null)
@@ -102,6 +104,7 @@
 				error = 'Course not found'
 				return
 			}
+			thumbnailFailed = false
 			course = courseData
 	} catch (err: unknown) {
 		error = err instanceof Error ? err.message : 'Failed to load course'
@@ -171,6 +174,18 @@
 		}
 		return 'Premium'
 	}
+
+	function lessonKind(lesson: LessonMetadata): 'lesson' | 'video' | 'quiz' {
+		if (lesson.type === 'quiz' || lesson.hasQuiz) return 'quiz'
+		if (lesson.type === 'video') return 'video'
+		return 'lesson'
+	}
+
+	function lessonKindLabel(lesson: LessonMetadata): string {
+		const kind = lessonKind(lesson)
+		return kind === 'quiz' ? 'Quiz' : kind === 'video' ? 'Video' : 'Lesson'
+	}
+
 </script>
 
 <svelte:head>
@@ -217,137 +232,107 @@
 		/>
 		
 		<!-- Course Header -->
-		<div class="mb-8">
-			<div class="flex flex-col lg:flex-row gap-8">
-				<!-- Course Image -->
-				<div class="lg:w-1/3">
-					<img 
-						src={course.thumbnail} 
-					alt={course.title}
-					class="w-full aspect-video object-cover rounded-lg shadow-lg"
-				onerror={(e) => {
-					const target = e.currentTarget as HTMLImageElement
-					// Prevent infinite loop by checking if already replaced
-					if (target.src !== target.dataset.fallback) {
-						// Use a simple SVG data URI as fallback
-						target.dataset.fallback = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="225" viewBox="0 0 400 225"%3E%3Crect width="400" height="225" fill="%236366f1"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="18" fill="white"%3ECourse Image%3C/text%3E%3C/svg%3E'
-						target.src = target.dataset.fallback
-					}
-				}}
-					/>
+		<section class="mb-10 overflow-hidden rounded-2xl border bg-card shadow-sm">
+			<div class="grid lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
+				<div class="relative min-h-56 overflow-hidden bg-muted lg:min-h-full">
+					{#if course.thumbnail && !thumbnailFailed}
+						<img
+							src={course.thumbnail}
+							alt={course.title}
+							class="absolute inset-0 h-full w-full object-cover"
+							onerror={() => thumbnailFailed = true}
+						/>
+					{:else}
+						<div class="absolute inset-0 flex flex-col justify-between bg-gradient-to-br from-primary via-primary/85 to-violet-700 p-6 text-primary-foreground">
+							<div class="flex size-12 items-center justify-center rounded-xl bg-background/15 ring-1 ring-inset ring-white/20">
+								<BookOpen class="size-6" aria-hidden="true" />
+							</div>
+							<div>
+								<p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground/70">Open-EDU</p>
+								<p class="mt-2 text-xl font-semibold leading-tight">{course.category || 'Learning journey'}</p>
+							</div>
+						</div>
+					{/if}
 				</div>
 
-				<!-- Course Info -->
-				<div class="lg:w-2/3">
-					<div class="flex items-center gap-2 mb-3">
-						<span class="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
-							{course.category}
-						</span>
-						<span class="px-3 py-1 bg-secondary/10 text-secondary-foreground text-sm font-medium rounded-full">
-							{course.difficulty}
-						</span>
+				<div class="flex min-w-0 flex-col p-6 sm:p-8 lg:p-10">
+					<div class="flex flex-wrap gap-2">
+						<Badge variant="secondary">{course.category}</Badge>
+						<Badge variant="outline" class="bg-secondary/30">{course.difficulty}</Badge>
 						{#if course.isFeatured}
-							<span class="px-3 py-1 bg-accent/10 text-accent-foreground text-sm font-medium rounded-full">
-								Featured
-							</span>
+							<Badge class="bg-accent text-accent-foreground">Featured</Badge>
 						{/if}
 					</div>
 
-					<h1 class="text-3xl lg:text-4xl font-bold text-foreground mb-4">{course.title}</h1>
-					<p class="text-muted-foreground text-lg mb-6">{course.description}</p>
+					<h1 class="mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-[2.6rem] lg:leading-tight">{course.title}</h1>
+					<p class="mt-4 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">{course.description}</p>
 
-					<!-- Course Meta -->
-					<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-						<div class="flex items-center gap-2">
-							<User class="w-5 h-5 text-muted-foreground" />
-							<span class="text-sm text-muted-foreground">By {course.instructor}</span>
+					<div class="mt-6 grid gap-3 sm:grid-cols-3">
+						<div class="flex min-w-0 items-center gap-3 rounded-lg bg-muted/60 px-3 py-3">
+							<User class="size-4 shrink-0 text-primary" aria-hidden="true" />
+							<div class="min-w-0"><p class="text-xs text-muted-foreground">Instructor</p><p class="truncate text-sm font-medium text-foreground">{course.instructor}</p></div>
 						</div>
-						<div class="flex items-center gap-2">
-							<Clock class="w-5 h-5 text-muted-foreground" />
-							<span class="text-sm text-muted-foreground">{formatDuration(course.duration)}</span>
+						<div class="flex min-w-0 items-center gap-3 rounded-lg bg-muted/60 px-3 py-3">
+							<Clock class="size-4 shrink-0 text-primary" aria-hidden="true" />
+							<div class="min-w-0"><p class="text-xs text-muted-foreground">Pace</p><p class="truncate text-sm font-medium text-foreground">{formatDuration(course.duration)}</p></div>
 						</div>
-						<div class="flex items-center gap-2">
-							<Users class="w-5 h-5 text-muted-foreground" />
-							<span class="text-sm text-muted-foreground">{course.enrolled} enrolled</span>
+						<div class="flex min-w-0 items-center gap-3 rounded-lg bg-muted/60 px-3 py-3">
+							<Users class="size-4 shrink-0 text-primary" aria-hidden="true" />
+							<div class="min-w-0"><p class="text-xs text-muted-foreground">Learners</p><p class="truncate text-sm font-medium text-foreground">{course.enrolled} enrolled</p></div>
 						</div>
 					</div>
 
-					<!-- Rating -->
 					{#if course.rating > 0}
-						<div class="flex items-center gap-2 mb-6">
-							<div class="flex items-center">
-							{#each Array(5) as _, i (i)}
-								<Star 
-									class="w-5 h-5 {i < Math.floor(course.rating) ? 'text-accent-foreground fill-accent-foreground' : 'text-muted fill-muted'}"
-								/>
-							{/each}
+						<div class="mt-5 flex items-center gap-2 text-sm">
+							<div class="flex items-center" aria-label={`${course.rating.toFixed(1)} out of 5 stars`}>
+								{#each Array(5) as _, i (i)}
+									<Star class="size-4 {i < Math.floor(course.rating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted'}" aria-hidden="true" />
+								{/each}
 							</div>
-							<span class="text-sm text-muted-foreground">
-								{course.rating.toFixed(1)} ({course.ratingCount} reviews)
-							</span>
+							<span class="font-medium text-foreground">{course.rating.toFixed(1)}</span>
+							<span class="text-muted-foreground">({course.ratingCount} reviews)</span>
 						</div>
 					{/if}
 
-					<!-- Price and Enrollment -->
-					<div class="flex items-center justify-between">
-						<div class="text-2xl font-bold text-green-600 dark:text-green-400">
-							{formatPrice(course)}
-						</div>
-						
-						<div class="flex gap-3">
+					<div class="mt-6 flex flex-col gap-4 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+						<div><p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Course access</p><p class="mt-1 text-2xl font-bold text-green-600 dark:text-green-400">{formatPrice(course)}</p></div>
+						<div class="flex flex-col gap-2 sm:flex-row">
 							{#if canEditCourse}
-								<Button 
-									variant="outline"
-									onclick={() => navigate(`/admin/courses/${courseId}`)}
-								>
-									<Edit class="w-4 h-4 mr-2" />
-									Edit Course
-								</Button>
+								<Button variant="outline" class="w-full sm:w-auto" onclick={() => navigate(`/admin/courses/${courseId}`)}><Edit class="mr-2 size-4" />Edit Course</Button>
 							{/if}
 							{#if !authState.user}
-								<Button onclick={() => navigate('/auth/login')}>
-									Sign In to Enroll
-								</Button>
+								<Button size="lg" class="w-full sm:w-auto" onclick={() => navigate('/auth/login')}>Sign In to Enroll</Button>
 							{:else if canEnroll}
-								<Button 
-									onclick={handleEnroll}
-									disabled={enrolling}
-									class="px-8"
-								>
-									{enrolling ? 'Enrolling...' : 'Enroll Now'}
-								</Button>
+								<Button size="lg" class="w-full sm:w-auto" onclick={handleEnroll} disabled={enrolling}>{enrolling ? 'Enrolling...' : 'Enroll Now'}</Button>
 							{:else if canStartLearning}
-								<Button onclick={handleStartLearning} class="px-8">
-									Continue Learning
-								</Button>
+								<Button size="lg" class="w-full sm:w-auto" onclick={handleStartLearning}>Continue Learning</Button>
 							{:else if isEnrolled}
-								<Button variant="outline" disabled>
-									Already Enrolled
-								</Button>
+								<Button variant="outline" class="w-full sm:w-auto" disabled>Already Enrolled</Button>
 							{/if}
 						</div>
 					</div>
 				</div>
 			</div>
-		</div>
+		</section>
 
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 			<!-- Main Content -->
 			<div class="lg:col-span-2">
 				<!-- Learning Outcomes -->
 				{#if course.learningOutcomes?.length}
-					<Card class="mb-8">
-						<CardHeader>
-							<CardTitle>What You'll Learn</CardTitle>
+					<Card class="mb-8 gap-0 overflow-hidden py-0">
+						<CardHeader class="border-b bg-muted/30 py-5 sm:py-6">
+							<div class="flex items-start justify-between gap-4">
+								<div><CardTitle>What You'll Learn</CardTitle><CardDescription class="mt-1">Skills and outcomes you will build throughout this course.</CardDescription></div>
+								<Badge variant="secondary">{course.learningOutcomes.length} outcomes</Badge>
+							</div>
 						</CardHeader>
-						<CardContent>
-							<ul class="space-y-3">
+						<CardContent class="p-4 sm:p-6">
+							<ul class="grid gap-3 sm:grid-cols-2">
 							{#each course.learningOutcomes as outcome (outcome)}
-								<li class="flex items-start gap-3">
-									<svg class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-									</svg>
-									<span class="text-foreground">{outcome}</span>
+								<li class="flex items-start gap-3 rounded-xl border bg-background/60 p-4">
+									<span class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><Check class="size-3.5" strokeWidth={3} aria-hidden="true" /></span>
+									<span class="text-sm leading-6 text-foreground">{outcome}</span>
 								</li>
 							{/each}
 							</ul>
@@ -357,54 +342,21 @@
 
 				<!-- Course Curriculum -->
 				{#if lessonCount > 0}
-					<Card class="mb-8">
-						<CardHeader>
-							<CardTitle>Course Curriculum</CardTitle>
-							<CardDescription>
-								{lessonCount} lesson{lessonCount !== 1 ? 's' : ''}
-							</CardDescription>
+					<Card class="mb-8 gap-0 overflow-hidden py-0">
+						<CardHeader class="border-b bg-muted/30 py-5 sm:py-6">
+							<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+								<div><CardTitle>Course Curriculum</CardTitle><CardDescription class="mt-1">Follow the lessons in order and complete the included knowledge checks.</CardDescription></div>
+								<div class="flex flex-wrap gap-2"><Badge variant="secondary">{lessonCount} lesson{lessonCount !== 1 ? 's' : ''}</Badge>{#if course.totalQuizzes ?? course.quizzesMetadata?.length}<Badge variant="outline">{course.totalQuizzes ?? course.quizzesMetadata?.length} quiz{(course.totalQuizzes ?? course.quizzesMetadata?.length) !== 1 ? 'zes' : ''}</Badge>{/if}</div>
+							</div>
 						</CardHeader>
-						<CardContent>
-							<div class="space-y-2">
+						<CardContent class="p-3 sm:p-4">
+							<div class="divide-y rounded-xl border bg-background">
 							{#each sortedLessons as lesson (lesson.id)}
-								<Card class="overflow-hidden hover:shadow-md transition-shadow">
-									<CardContent class="p-4">
-										<div class="flex items-start gap-3">
-											<!-- Lesson Number Badge -->
-											<div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-sm font-semibold text-primary shrink-0 mt-0.5">
-												{lesson.order || sortedLessons.indexOf(lesson) + 1}
-											</div>
-											
-											<!-- Lesson Info -->
-											<div class="flex-1 min-w-0">
-												<h4 class="font-semibold text-foreground">{lesson.title}</h4>
-												{#if lesson.description}
-													<p class="text-sm text-muted-foreground mt-1 line-clamp-2">{lesson.description}</p>
-												{/if}
-											</div>
-											
-											<!-- Lesson Meta -->
-											<div class="flex flex-col sm:flex-row items-end sm:items-center gap-2 text-xs shrink-0">
-												{#if lesson.duration}
-													<div class="flex items-center gap-1 px-2 py-1 bg-muted rounded-md">
-														<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-														</svg>
-														<span class="text-muted-foreground font-medium">{lesson.duration} min</span>
-													</div>
-												{/if}
-												<div class="px-2 py-1 bg-secondary/10 text-secondary-foreground rounded-md capitalize font-medium">
-													{lesson.type === 'quiz' || lesson.hasQuiz ? 'Quiz' : lesson.type === 'video' ? 'Video' : 'Lesson'}
-												</div>
-												{#if lesson.isRequired}
-													<div class="px-2 py-1 bg-destructive/10 text-destructive rounded-md font-semibold">
-														Required
-													</div>
-												{/if}
-											</div>
-										</div>
-									</CardContent>
-								</Card>
+								<div class="flex flex-col gap-3 p-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:gap-4">
+									<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{lesson.order || sortedLessons.indexOf(lesson) + 1}</div>
+									<div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><h4 class="font-semibold text-foreground">{lesson.title}</h4><Badge variant={lessonKind(lesson) === 'quiz' ? 'default' : 'outline'} class={lessonKind(lesson) === 'video' ? 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300' : ''}>{#if lessonKind(lesson) === 'quiz'}<CircleHelp class="size-3" />{:else if lessonKind(lesson) === 'video'}<PlayCircle class="size-3" />{:else}<FileText class="size-3" />{/if}{lessonKindLabel(lesson)}</Badge>{#if lesson.isRequired}<Badge variant="outline" class="border-destructive/30 bg-destructive/10 text-destructive">Required</Badge>{/if}</div>{#if lesson.description}<p class="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{lesson.description}</p>{/if}</div>
+									<div class="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">{#if lesson.duration}<span class="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1"><Clock class="size-3" aria-hidden="true" />{lesson.duration} min</span>{/if}</div>
+								</div>
 							{/each}
 							</div>
 						</CardContent>
@@ -414,13 +366,13 @@
 
 			<!-- Sidebar -->
 			{#if course.modules?.length || course.schedule?.length}
-				<Card class="mb-6 lg:col-span-2">
-					<CardHeader><CardTitle>Weekly schedule</CardTitle><CardDescription>Modules and upcoming academic activities</CardDescription></CardHeader>
-					<CardContent class="space-y-4">
+				<Card class="mb-6 gap-0 overflow-hidden py-0 lg:col-span-2">
+					<CardHeader class="border-b bg-muted/30 py-5 sm:py-6"><CardTitle>Weekly schedule</CardTitle><CardDescription>Modules and upcoming academic activities</CardDescription></CardHeader>
+					<CardContent class="space-y-3 p-4 sm:p-6">
 						{#each (course.modules ?? []).slice().sort((a,b) => a.number-b.number) as module}
 							<div class="rounded border p-3"><h3 class="font-medium">Week {module.number}: {module.title}</h3><p class="text-sm text-muted-foreground">{module.startDate} – {module.endDate}</p>{#if module.objectives.length}<ul class="list-disc pl-5 text-sm">{#each module.objectives as objective}<li>{objective}</li>{/each}</ul>{/if}<p class="text-sm">{module.resources.length} resource(s)</p></div>
 						{/each}
-						{#each (course.schedule ?? []).slice().sort((a,b) => a.date.localeCompare(b.date)) as activity}<div class="flex justify-between border-b py-2 text-sm"><span>{activity.title} ({activity.type})</span><time>{activity.dueAt ?? activity.date}</time></div>{/each}
+						{#each (course.schedule ?? []).slice().sort((a,b) => a.date.localeCompare(b.date)) as activity}<div class="flex flex-col gap-2 border-b py-3 text-sm last:border-0 sm:flex-row sm:items-center sm:justify-between"><div class="flex min-w-0 items-center gap-2">{#if activity.type === 'assignment'}<ClipboardCheck class="size-4 shrink-0 text-primary" aria-hidden="true" />{:else if activity.type === 'exam'}<CircleHelp class="size-4 shrink-0 text-primary" aria-hidden="true" />{:else}<CalendarDays class="size-4 shrink-0 text-primary" aria-hidden="true" />{/if}<span class="truncate font-medium text-foreground">{activity.title}</span><Badge variant={activity.type === 'exam' ? 'default' : activity.type === 'assignment' ? 'secondary' : 'outline'} class="capitalize">{activity.type}</Badge></div><time class="shrink-0 text-muted-foreground">{activity.dueAt ?? activity.date}</time></div>{/each}
 					</CardContent>
 				</Card>
 			{/if}

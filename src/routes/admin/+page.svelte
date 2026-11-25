@@ -177,7 +177,7 @@
 		<!-- Header -->
 		<div class="bg-card border-b">
 			<div class="container mx-auto px-4 py-6">
-				<div class="flex items-center justify-between">
+				<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<div>
 						<h1 class="text-3xl font-bold text-foreground">Admin Dashboard</h1>
 						<p class="text-muted-foreground mt-1">

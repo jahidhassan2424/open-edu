@@ -125,17 +125,17 @@
 						<span class="hidden sm:inline-block text-sm text-muted-foreground">
 							{m.nav_welcome({ name: authState.user.displayName || authState.user.email || '' })}
 						</span>
-						<LanguageSwitcher />
+						<div class="hidden sm:block"><LanguageSwitcher /></div>
 						<ThemeToggle />
-						<Button variant="ghost" size="icon" onclick={handleLogout} title={m.nav_logout()}>
+						<Button variant="ghost" size="icon" onclick={handleLogout} title={m.nav_logout()} class="hidden sm:inline-flex">
 							<LogOut class="h-4 w-4" />
 						</Button>
 					</div>
 				{:else}
 					<!-- Guest User Menu -->
-					<LanguageSwitcher />
+					<div class="hidden sm:block"><LanguageSwitcher /></div>
 					<ThemeToggle />
-					<Button size="sm">
+					<Button size="sm" class="hidden sm:inline-flex">
 						<a href={getPath('/auth/login')}>{m.nav_signIn()}</a>
 					</Button>
 				{/if}
@@ -179,6 +179,12 @@
 								<span>{m.nav_admin()}</span>
 							</a>
 						{/if}
+						<button onclick={handleLogout} class="flex w-full items-center gap-2 py-2 text-left text-sm font-medium text-muted-foreground hover:text-foreground sm:hidden">
+							<LogOut class="h-4 w-4" />
+							{m.nav_logout()}
+						</button>
+					{:else}
+						<a href={getPath('/auth/login')} class="block py-2 text-sm font-medium text-muted-foreground hover:text-foreground sm:hidden">{m.nav_signIn()}</a>
 					{/if}
 					<!-- Language Switcher in Mobile Menu -->
 					<div class="py-2">

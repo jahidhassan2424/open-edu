@@ -254,12 +254,12 @@
 						class="mb-3"
 					/>
 					
-					<div class="flex items-center justify-between">
+					<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
 							<h1 class="text-2xl font-bold text-foreground">{isNewLesson ? 'Create' : 'Edit'} Lesson</h1>
 							<p class="text-sm text-muted-foreground mt-1">{course?.title}</p>
 						</div>
-						<div class="flex gap-3">
+						<div class="flex flex-wrap gap-3">
 							<Button variant="outline" onclick={handleCancel} class="shadow-sm">
 								Cancel
 							</Button>
@@ -478,7 +478,7 @@
 								</div>
 
 								<!-- Editor Area -->
-								<div class="grid {previewMode === 'split' ? 'grid-cols-2' : 'grid-cols-1'} gap-4">
+						<div class="grid {previewMode === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'} gap-4">
 									<!-- Editor -->
 									{#if previewMode !== 'preview'}
 										<div>

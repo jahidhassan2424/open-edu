@@ -285,7 +285,7 @@
 		<div class="flex gap-1 mt-3">
 			<button
 				onclick={() => activeTab = 'all'}
-				class="flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors {activeTab === 'all' 
+				class="min-h-11 flex-1 px-3 py-2 text-xs font-medium rounded transition-colors {activeTab === 'all'
 					? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' 
 					: 'text-muted-foreground dark:text-muted-foreground/50 hover:bg-muted dark:hover:bg-gray-700'}"
 			>
@@ -293,7 +293,7 @@
 			</button>
 			<button
 				onclick={() => activeTab = 'notes'}
-				class="flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors {activeTab === 'notes' 
+				class="min-h-11 flex-1 px-3 py-2 text-xs font-medium rounded transition-colors {activeTab === 'notes'
 					? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' 
 					: 'text-muted-foreground dark:text-muted-foreground/50 hover:bg-muted dark:hover:bg-gray-700'}"
 			>
@@ -301,7 +301,7 @@
 			</button>
 			<button
 				onclick={() => activeTab = 'bookmarks'}
-				class="flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors {activeTab === 'bookmarks' 
+				class="min-h-11 flex-1 px-3 py-2 text-xs font-medium rounded transition-colors {activeTab === 'bookmarks'
 					? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' 
 					: 'text-muted-foreground dark:text-muted-foreground/50 hover:bg-muted dark:hover:bg-gray-700'}"
 			>
@@ -314,7 +314,7 @@
 			<div class="flex gap-1.5 items-center">
 				<button
 					onclick={() => selectedColor = 'all'}
-					class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all {selectedColor === 'all' 
+					class="size-9 shrink-0 rounded-full border-2 flex items-center justify-center transition-all {selectedColor === 'all'
 						? 'border-gray-900 dark:border-white bg-gray-200 dark:bg-gray-700' 
 						: 'border-gray-300 dark:border-gray-600 hover:border-gray-400'}"
 					title="All colors"
@@ -328,7 +328,7 @@
 			{#each Object.keys(NOTE_COLORS) as color (color)}
 				<button
 					onclick={() => selectedColor = color as NoteColor}
-					class="w-6 h-6 rounded-full border-2 transition-all {selectedColor === color 
+					class="size-9 shrink-0 rounded-full border-2 transition-all {selectedColor === color
 						? 'border-gray-900 dark:border-white scale-110' 
 						: 'border-transparent hover:scale-105'}
 						{color === 'yellow' ? 'bg-yellow-400' : ''}

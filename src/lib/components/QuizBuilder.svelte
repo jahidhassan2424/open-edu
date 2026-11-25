@@ -969,16 +969,17 @@
 	{/if}
 	
 	<!-- Action buttons -->
-	<div class="flex justify-between items-center mt-6 pt-6 border-t">
-		<Button variant="outline" onclick={onCancel} disabled={isSaving}>
+	<div class="mt-6 flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
+		<Button variant="outline" onclick={onCancel} disabled={isSaving} class="w-full sm:w-auto">
 			Cancel
 		</Button>
 		
-		<div class="flex gap-3">
+		<div class="flex flex-col gap-3 sm:flex-row">
 			<Button
 				variant="outline"
 				onclick={handleSave}
 				disabled={isSaving}
+				class="w-full sm:w-auto"
 			>
 				<Save class="w-4 h-4 mr-2" />
 				{isSaving ? 'Saving...' : 'Save as Draft'}
@@ -986,6 +987,7 @@
 			<Button
 				onclick={handleSave}
 				disabled={isSaving}
+				class="w-full sm:w-auto"
 			>
 				{isSaving ? 'Saving...' : 'Save Quiz'}
 			</Button>

@@ -171,7 +171,7 @@
 					class="mb-4"
 				/>
 				
-				<div class="flex items-center justify-between">
+				<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<div>
 						<h1 class="text-3xl font-bold text-foreground">Content Analytics</h1>
 						<p class="text-muted-foreground mt-1">Student engagement and performance insights</p>

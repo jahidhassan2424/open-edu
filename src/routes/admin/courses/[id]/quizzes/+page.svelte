@@ -409,7 +409,7 @@
 			<!-- Header -->
 			<div class="bg-background border-b">
 				<div class="container mx-auto px-4 py-6">
-					<div class="flex items-center justify-between">
+					<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
 							<div class="flex items-center gap-3 text-sm text-muted-foreground mb-2">
 								<button

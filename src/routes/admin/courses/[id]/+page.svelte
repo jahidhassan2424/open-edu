@@ -360,12 +360,12 @@
 						class="mb-4"
 					/>
 					
-					<div class="flex items-center justify-between">
+					<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
 							<h1 class="text-3xl font-bold">Edit Course</h1>
 							<p class="text-muted-foreground mt-1">Update your course information and manage lessons</p>
 						</div>
-						<div class="flex gap-3">
+						<div class="flex flex-wrap gap-3">
 							<Button variant="outline" onclick={handleCancel}>
 								Cancel
 							</Button>
@@ -495,7 +495,7 @@
 								</div>
 
 										{#if form.level === 'premium'}
-											<div class="grid grid-cols-2 gap-6">
+											<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
 											<div>
 												<Label for="price" class="mb-2">Price *</Label>
 												<Input
@@ -612,7 +612,7 @@
 							<!-- Lesson Management -->
 							<Card>
 								<CardHeader>
-									<div class="flex items-center justify-between">
+									<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 										<CardTitle>Lessons ({lessons.length})</CardTitle>
 										<Button onclick={handleAddLesson} class="text-sm">
 											<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -791,8 +791,8 @@
 	
 	<!-- Delete Lesson Confirmation Dialog -->
 	{#if showDeleteLessonDialog && lessonToDelete}
-		<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-			<Card class="max-w-md w-full">
+		<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+			<Card class="my-4 max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto">
 				<CardHeader>
 					<CardTitle class="text-destructive">Delete Lesson</CardTitle>
 				</CardHeader>
@@ -835,8 +835,8 @@
 	
 	<!-- Delete Course Confirmation Dialog -->
 	{#if showDeleteDialog}
-		<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-			<Card class="max-w-md w-full">
+		<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+			<Card class="my-4 max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto">
 				<CardHeader>
 					<CardTitle class="text-destructive">Delete Course</CardTitle>
 				</CardHeader>

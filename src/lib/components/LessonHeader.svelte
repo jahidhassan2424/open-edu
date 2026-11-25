@@ -76,7 +76,7 @@
 </script>
 
 <header class="bg-background border-b border-border sticky top-20 z-20 shadow-sm">
-	<div class="max-w-5xl mx-auto px-6 py-6">
+	<div class="mx-auto max-w-5xl px-4 py-5 sm:px-6 sm:py-6">
 		<!-- Title and Type Badge -->
 		<div class="flex items-start justify-between gap-4 mb-4">
 			<div class="flex-1 min-w-0">
@@ -103,7 +103,7 @@
 		</div>
 		
 		<!-- Metadata Grid -->
-		<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-100">
+		<div class="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-100 sm:gap-4 md:grid-cols-4">
 			<!-- Reading Time -->
 			<div class="flex items-center gap-2 text-sm">
 				<div class="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
