@@ -1,5 +1,5 @@
 import { createServer as createHttpServer } from 'node:http'
-import { readFile } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import { extname, join, normalize, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -20,6 +20,35 @@ export function applicationPath(url, { basePath = '', forwardedPrefix = '' } = {
     if (prefix && (pathname === prefix || pathname.startsWith(`${prefix}/`))) return pathname.slice(prefix.length) || '/'
   }
   return pathname
+}
+
+/** @param {string} root */
+export async function detectSvelteKitRuntimeName(root = resolve('build')) {
+  const runtimeDirectories = [
+    join(root, '_app', 'immutable', 'entry'),
+    join(root, '_app', 'immutable', 'chunks')
+  ]
+
+  for (const directory of runtimeDirectories) {
+    let entries
+    try { entries = await readdir(directory, { withFileTypes: true }) } catch { continue }
+    for (const entry of entries) {
+      if (!entry.isFile() || extname(entry.name) !== '.js') continue
+      let source
+      try { source = await readFile(join(directory, entry.name), 'utf8') } catch { continue }
+      for (const match of source.matchAll(/\bglobalThis\.(__sveltekit_[A-Za-z0-9_$]+)/g)) {
+        if (match[1] !== '__sveltekit_fetch') return match[1]
+      }
+    }
+  }
+
+  return '__sveltekit_dev'
+}
+
+/** @param {string} html @param {string} runtimeName */
+export function rewriteSvelteKitRuntimeName(html, runtimeName) {
+  if (runtimeName === '__sveltekit_dev') return html
+  return html.replace(/__sveltekit_dev/g, runtimeName)
 }
 
 /** @param {import('node:http').ServerResponse} response */
@@ -43,7 +72,10 @@ function safeAsset(root, pathname) {
 /** @param {{ root?: string, basePath?: string, mongoHandler?: (request: any, response: any) => unknown, reminderHandler?: (request: any, response: any) => unknown, isReady?: () => boolean }} options */
 export function createOpenEduServer({ root = resolve('build'), basePath = process.env.PUBLIC_BASE_PATH ?? '', mongoHandler, reminderHandler, isReady = () => true } = {}) {
   if (!mongoHandler) throw new Error('mongoHandler is required')
+  // Resolve once per server instance; SH-002 will use this when serving fallback HTML.
+  const runtimeName = detectSvelteKitRuntimeName(root)
   return createHttpServer(async (request, response) => {
+    void runtimeName
     const forwardedPrefix = request.headers['x-forwarded-prefix']
     const path = applicationPath(request.url ?? '/', { basePath, forwardedPrefix: typeof forwardedPrefix === 'string' ? forwardedPrefix : '' })
     if (path === '/api/health') {
@@ -72,15 +104,16 @@ export function createOpenEduServer({ root = resolve('build'), basePath = proces
     if (!asset) { response.statusCode = 400; response.end('Invalid path.'); return }
     try {
       const body = await readFile(asset)
-      response.setHeader('content-type', mimeTypes[extname(asset)] ?? 'application/octet-stream')
+      const extension = extname(asset)
+      response.setHeader('content-type', mimeTypes[extension] ?? 'application/octet-stream')
       response.statusCode = 200
-      response.end(request.method === 'HEAD' ? undefined : body)
+      response.end(request.method === 'HEAD' ? undefined : extension === '.html' ? rewriteSvelteKitRuntimeName(body.toString('utf8'), await runtimeName) : body)
     } catch {
       try {
         const index = await readFile(join(root, 'index.html'))
         response.setHeader('content-type', mimeTypes['.html'])
         response.statusCode = 200
-        response.end(request.method === 'HEAD' ? undefined : index)
+        response.end(request.method === 'HEAD' ? undefined : rewriteSvelteKitRuntimeName(index.toString('utf8'), await runtimeName))
       } catch { response.statusCode = 404; response.end('Open-EDU build output was not found. Run npm run build first.') }
     }
   })
